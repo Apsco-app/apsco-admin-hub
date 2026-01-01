@@ -16,7 +16,7 @@ import Analytics from "./pages/dashboard/Analytics";
 import Payments from "./pages/dashboard/Payments";
 import Ads from "./pages/dashboard/Ads";
 import Settings from "./pages/dashboard/Settings";
-import MobileRedirect from "./pages/MobileRedirect";
+import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +28,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Landing Page */}
+          <Route path="/" element={<LandingPage />} />
+          
           {/* Auth Routes */}
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/register" element={<Register />} />
@@ -45,9 +48,6 @@ const App = () => (
             <Route path="ads" element={<Ads />} />
             <Route path="settings" element={<Settings />} />
           </Route>
-          
-          {/* Mobile Redirect (for students/parents) */}
-          <Route path="/" element={<MobileRedirect />} />
           
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
