@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Shield, Clock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,32 +72,93 @@ const Register = () => {
     navigate("/dashboard/create-school");
   };
 
+  const benefits = [
+    { icon: Shield, title: "Verified Documents", desc: "AI-powered verification of student records" },
+    { icon: Clock, title: "Save Time", desc: "Reduce manual data entry by 80%" },
+    { icon: Sparkles, title: "Smart Insights", desc: "Analytics to optimize your admissions" },
+  ];
+
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Form */}
-      <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 xl:px-24 py-12">
-        <div className="w-full max-w-md mx-auto">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-8">
+      {/* Left Side - Hero Visual */}
+      <div className="hidden lg:flex flex-1 relative overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }} />
+        
+        {/* Floating shapes */}
+        <div className="absolute top-32 right-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-32 left-20 w-80 h-80 bg-white/5 rounded-full blur-3xl" />
+        
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-center p-12 xl:p-20">
+          <div className="max-w-lg">
+            {/* Logo */}
+            <div className="flex items-center gap-4 mb-12">
+              <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                <img src={apscoLogo} alt="APSCO" className="h-12 w-12 filter brightness-0 invert" />
+              </div>
+              <span className="text-3xl font-bold text-white tracking-tight">APSCO</span>
+            </div>
+            
+            {/* Headline */}
+            <h1 className="text-4xl xl:text-5xl font-bold text-white mb-6 leading-tight">
+              Transform Your
+              <br />
+              <span className="text-white/80">Admissions Process</span>
+            </h1>
+            
+            <p className="text-lg text-white/70 mb-12 leading-relaxed">
+              Join hundreds of schools across Uganda using APSCO to modernize their student enrollment.
+            </p>
+            
+            {/* Benefits */}
+            <div className="space-y-6">
+              {benefits.map((benefit, index) => (
+                <div
+                  key={index}
+                  className="flex items-start gap-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10"
+                >
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <benefit.icon className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">{benefit.title}</h3>
+                    <p className="text-sm text-white/70">{benefit.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Form */}
+      <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 xl:px-24 py-12 bg-background">
+        <div className="w-full max-w-md mx-auto animate-fade-in">
+          {/* Mobile Logo */}
+          <div className="flex items-center gap-3 mb-8 lg:hidden">
             <img src={apscoLogo} alt="APSCO" className="h-10 w-10" />
             <span className="text-2xl font-bold text-foreground">APSCO</span>
           </div>
 
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-foreground mb-2">Register your school</h1>
-            <p className="text-muted-foreground">Create an account to manage your admissions</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Create your account</h1>
+            <p className="text-muted-foreground">Register your school to get started</p>
           </div>
 
           {/* Google Sign Up */}
           <Button
             type="button"
             variant="outline"
-            className="w-full h-11 mb-6"
+            className="w-full h-12 mb-6 text-base font-medium shadow-sm hover:shadow-md transition-shadow"
             onClick={handleGoogleSignUp}
             disabled={isLoading}
           >
-            <img src={googleIcon} alt="Google" className="h-5 w-5 mr-2" />
+            <img src={googleIcon} alt="Google" className="h-5 w-5 mr-3" />
             Continue with Google
           </Button>
 
@@ -107,14 +168,14 @@ const Register = () => {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">or register with email</span>
+              <span className="bg-background px-3 text-muted-foreground">or</span>
             </div>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="schoolName">School Name</Label>
+              <Label htmlFor="schoolName" className="text-sm font-medium">School Name</Label>
               <Input
                 id="schoolName"
                 name="schoolName"
@@ -122,7 +183,7 @@ const Register = () => {
                 placeholder="St. Mary's Secondary School"
                 value={formData.schoolName}
                 onChange={handleChange}
-                className={errors.schoolName ? "border-destructive" : ""}
+                className={`h-12 text-base ${errors.schoolName ? "border-destructive" : ""}`}
                 disabled={isLoading}
               />
               {errors.schoolName && (
@@ -131,7 +192,7 @@ const Register = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
               <Input
                 id="email"
                 name="email"
@@ -139,7 +200,7 @@ const Register = () => {
                 placeholder="admin@school.edu"
                 value={formData.email}
                 onChange={handleChange}
-                className={errors.email ? "border-destructive" : ""}
+                className={`h-12 text-base ${errors.email ? "border-destructive" : ""}`}
                 disabled={isLoading}
               />
               {errors.email && (
@@ -148,7 +209,7 @@ const Register = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-sm font-medium">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -157,15 +218,15 @@ const Register = () => {
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
-                  className={errors.password ? "border-destructive pr-10" : "pr-10"}
+                  className={`h-12 text-base pr-12 ${errors.password ? "border-destructive" : ""}`}
                   disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
               {errors.password && (
@@ -174,7 +235,7 @@ const Register = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</Label>
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -182,7 +243,7 @@ const Register = () => {
                 placeholder="••••••••"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={errors.confirmPassword ? "border-destructive" : ""}
+                className={`h-12 text-base ${errors.confirmPassword ? "border-destructive" : ""}`}
                 disabled={isLoading}
               />
               {errors.confirmPassword && (
@@ -190,10 +251,10 @@ const Register = () => {
               )}
             </div>
 
-            <Button type="submit" className="w-full h-11" disabled={isLoading}>
+            <Button type="submit" className="w-full h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-shadow" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                   Creating account...
                 </>
               ) : (
@@ -203,22 +264,11 @@ const Register = () => {
           </form>
 
           {/* Login Link */}
-          <p className="mt-6 text-center text-sm text-muted-foreground">
+          <p className="mt-8 text-center text-muted-foreground">
             Already have an account?{" "}
-            <Link to="/auth/login" className="text-primary font-medium hover:underline">
+            <Link to="/auth/login" className="text-primary font-semibold hover:underline">
               Sign in
             </Link>
-          </p>
-        </div>
-      </div>
-
-      {/* Right Side - Visual */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary to-primary/80 items-center justify-center p-12">
-        <div className="text-center text-primary-foreground max-w-md">
-          <img src={apscoLogo} alt="APSCO" className="h-24 w-24 mx-auto mb-8 filter brightness-0 invert" />
-          <h2 className="text-3xl font-bold mb-4">Join APSCO Today</h2>
-          <p className="text-lg opacity-90">
-            Register your school and start receiving verified student applications through our digital admissions platform.
           </p>
         </div>
       </div>
