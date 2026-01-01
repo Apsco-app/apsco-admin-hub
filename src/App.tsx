@@ -3,7 +3,20 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import DashboardLayout from "./components/DashboardLayout";
+import Dashboard from "./pages/dashboard/Dashboard";
+import CreateSchool from "./pages/dashboard/CreateSchool";
+import Applicants from "./pages/dashboard/Applicants";
+import ApplicantDetail from "./pages/dashboard/ApplicantDetail";
+import Classes from "./pages/dashboard/Classes";
+import AdmissionsSettings from "./pages/dashboard/AdmissionsSettings";
+import Analytics from "./pages/dashboard/Analytics";
+import Payments from "./pages/dashboard/Payments";
+import Ads from "./pages/dashboard/Ads";
+import Settings from "./pages/dashboard/Settings";
+import MobileRedirect from "./pages/MobileRedirect";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -15,8 +28,28 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          {/* Auth Routes */}
+          <Route path="/auth/login" element={<Login />} />
+          <Route path="/auth/register" element={<Register />} />
+          
+          {/* Dashboard Routes */}
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="create-school" element={<CreateSchool />} />
+            <Route path="applicants" element={<Applicants />} />
+            <Route path="applicants/:id" element={<ApplicantDetail />} />
+            <Route path="classes" element={<Classes />} />
+            <Route path="admissions-settings" element={<AdmissionsSettings />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="payments" element={<Payments />} />
+            <Route path="ads" element={<Ads />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+          
+          {/* Mobile Redirect (for students/parents) */}
+          <Route path="/" element={<MobileRedirect />} />
+          
+          {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
