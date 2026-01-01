@@ -1,20 +1,33 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
   User,
   School,
-  Calendar,
-  MapPin,
-  Phone,
-  Mail,
   FileText,
   Download,
   Check,
   X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
 const mockApplicantDetails = {
@@ -48,19 +61,31 @@ const mockApplicantDetails = {
 const ApplicantDetail = () => {
   const { id } = useParams();
   const { toast } = useToast();
-  const applicant = mockApplicantDetails;
+  const [applicant, setApplicant] = useState(mockApplicantDetails);
+  const [personalOpen, setPersonalOpen] = useState(true);
+  const [academicOpen, setAcademicOpen] = useState(true);
+  const [documentsOpen, setDocumentsOpen] = useState(true);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    action: "accept" | "reject";
+  }>({ open: false, action: "accept" });
 
   const handleAction = (action: "accept" | "reject") => {
+    const newStatus = action === "accept" ? "accepted" : "rejected";
+    setApplicant({ ...applicant, status: newStatus });
     toast({
       title: `Application ${action === "accept" ? "Accepted" : "Rejected"}`,
-      description: `${applicant.fullName}'s application has been ${action}ed.`,
+      description: action === "reject" 
+        ? `${applicant.fullName} will be removed from the list in 24 hours.`
+        : `${applicant.fullName}'s application has been accepted.`,
     });
+    setConfirmDialog({ open: false, action: "accept" });
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in max-w-5xl">
       {/* Back Button */}
-      <Button variant="ghost" asChild className="mb-4">
+      <Button variant="ghost" asChild className="-ml-2">
         <Link to="/dashboard/applicants">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Applicants
@@ -70,175 +95,210 @@ const ApplicantDetail = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-xl font-bold text-primary">
+          <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="text-lg font-bold text-primary">
               {applicant.fullName.split(" ").map((n) => n[0]).join("")}
             </span>
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{applicant.fullName}</h1>
             <p className="text-muted-foreground">
-              Applying for {applicant.classApplied} • Applied on{" "}
-              {new Date(applicant.applicationDate).toLocaleDateString()}
+              Applying for {applicant.classApplied} • {new Date(applicant.applicationDate).toLocaleDateString()}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <span
-            className={`status-badge ${
-              applicant.status === "accepted"
-                ? "status-accepted"
-                : applicant.status === "rejected"
-                ? "status-rejected"
-                : "status-pending"
-            }`}
-          >
-            {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
-          </span>
-        </div>
+        <span
+          className={`status-badge ${
+            applicant.status === "accepted"
+              ? "status-accepted"
+              : applicant.status === "rejected"
+              ? "status-rejected"
+              : "status-pending"
+          }`}
+        >
+          {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
+        </span>
       </div>
 
       {/* Action Buttons */}
-      <Card className="border-border bg-muted/30">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              Review the applicant's details and make a decision
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => handleAction("reject")}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Reject
-              </Button>
-              <Button onClick={() => handleAction("accept")}>
-                <Check className="h-4 w-4 mr-2" />
-                Accept
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {applicant.status === "pending" && (
+        <div className="flex gap-3 p-4 bg-muted/30 rounded-xl border border-border">
+          <Button
+            variant="outline"
+            className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            onClick={() => setConfirmDialog({ open: true, action: "reject" })}
+          >
+            <X className="h-4 w-4 mr-2" />
+            Reject
+          </Button>
+          <Button onClick={() => setConfirmDialog({ open: true, action: "accept" })}>
+            <Check className="h-4 w-4 mr-2" />
+            Accept
+          </Button>
+        </div>
+      )}
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Personal Information */}
-        <Card className="lg:col-span-2 border-border">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <User className="h-5 w-5 text-primary" />
-              Personal Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Full Name</p>
-                <p className="font-medium">{applicant.fullName}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Gender</p>
-                <p className="font-medium">{applicant.gender}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Date of Birth</p>
-                <p className="font-medium">
-                  {new Date(applicant.dateOfBirth).toLocaleDateString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Parent/Guardian</p>
-                <p className="font-medium">{applicant.parentName}</p>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{applicant.email}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{applicant.phone}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{applicant.address}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Academic Information */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <School className="h-5 w-5 text-primary" />
-              Academic Info
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Former School</p>
-              <p className="font-medium">{applicant.formerSchool}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">PLE Aggregates</p>
-              <p className="text-2xl font-bold text-primary">{applicant.aggregates}</p>
-            </div>
-            <Separator />
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Subject Grades</p>
-              <div className="space-y-2">
-                {applicant.subjects.map((subject) => (
-                  <div key={subject.name} className="flex justify-between items-center">
-                    <span className="text-sm">{subject.name}</span>
-                    <span className="font-medium text-primary">{subject.grade}</span>
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column - Student Details */}
+        <div className="space-y-4">
+          {/* Personal Info */}
+          <Collapsible open={personalOpen} onOpenChange={setPersonalOpen}>
+            <div className="bg-background rounded-xl border border-border overflow-hidden">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center justify-between w-full p-4 hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <User className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">Personal Information</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Documents */}
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            Uploaded Documents
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {applicant.documents.map((doc) => (
-              <div
-                key={doc.name}
-                className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FileText className="h-5 w-5 text-primary" />
+                  {personalOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-4 pb-4 space-y-4">
+                  <Separator />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Full Name</p>
+                      <p className="font-medium">{applicant.fullName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Gender</p>
+                      <p className="font-medium">{applicant.gender}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Date of Birth</p>
+                      <p className="font-medium">{new Date(applicant.dateOfBirth).toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Parent/Guardian</p>
+                      <p className="font-medium">{applicant.parentName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Phone</p>
+                      <p className="font-medium">{applicant.phone}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="font-medium">{applicant.email}</p>
+                    </div>
                   </div>
                   <div>
-                    <p className="text-sm font-medium truncate max-w-[120px]">{doc.name}</p>
-                    <p className="text-xs text-muted-foreground uppercase">{doc.type}</p>
+                    <p className="text-sm text-muted-foreground">Address</p>
+                    <p className="font-medium">{applicant.address}</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon">
-                  <Download className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+
+          {/* Academic Info */}
+          <Collapsible open={academicOpen} onOpenChange={setAcademicOpen}>
+            <div className="bg-background rounded-xl border border-border overflow-hidden">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center justify-between w-full p-4 hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <School className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">Academic Information</span>
+                  </div>
+                  {academicOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-4 pb-4 space-y-4">
+                  <Separator />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Former School</p>
+                    <p className="font-medium">{applicant.formerSchool}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">PLE Aggregates</p>
+                    <p className="text-3xl font-bold text-primary">{applicant.aggregates}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-3">Subject Grades</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {applicant.subjects.map((subject) => (
+                        <div key={subject.name} className="flex justify-between items-center p-2 bg-muted/30 rounded-lg">
+                          <span className="text-sm">{subject.name}</span>
+                          <span className="font-semibold text-primary">{subject.grade}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        </div>
+
+        {/* Right Column - Documents */}
+        <div>
+          <Collapsible open={documentsOpen} onOpenChange={setDocumentsOpen}>
+            <div className="bg-background rounded-xl border border-border overflow-hidden">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center justify-between w-full p-4 hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">Documents</span>
+                  </div>
+                  {documentsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-4 pb-4 space-y-3">
+                  <Separator />
+                  {applicant.documents.map((doc) => (
+                    <div
+                      key={doc.name}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{doc.name}</p>
+                          <p className="text-xs text-muted-foreground uppercase">{doc.type}</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="icon">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        </div>
+      </div>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDialog.action === "accept" ? "Accept Application" : "Reject Application"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.action === "accept" 
+                ? `Are you sure you want to accept ${applicant.fullName}'s application?`
+                : `Are you sure you want to reject ${applicant.fullName}'s application? They will be removed from the list in 24 hours.`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleAction(confirmDialog.action)}
+              className={confirmDialog.action === "reject" ? "bg-destructive hover:bg-destructive/90" : ""}
+            >
+              {confirmDialog.action === "accept" ? "Accept" : "Reject"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
