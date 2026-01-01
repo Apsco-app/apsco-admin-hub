@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Save, Loader2, Check } from "lucide-react";
+import { CalendarIcon, Save, Loader2, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const availableClasses = [
   { id: "s1", name: "Senior 1" },
@@ -25,12 +26,19 @@ const applicationFields = [
   { id: "gender", name: "Gender", required: true },
   { id: "formerSchool", name: "Former School", required: true },
   { id: "aggregates", name: "PLE Aggregates", required: false },
+  { id: "oLevelResults", name: "O-Level Results", required: false },
+  { id: "aLevelResults", name: "A-Level Results", required: false },
   { id: "parentName", name: "Parent/Guardian Name", required: false },
   { id: "phone", name: "Phone Number", required: false },
   { id: "email", name: "Email Address", required: false },
   { id: "address", name: "Home Address", required: false },
   { id: "healthInfo", name: "Health Information", required: false },
+  { id: "documents", name: "Document Uploads", required: false },
 ];
+
+const defaultRequiredFields = applicationFields.filter((f) => f.required).map((f) => f.id);
+
+type ClassFieldSettings = Record<string, string[]>;
 
 const AdmissionsSettings = () => {
   const { toast } = useToast();
@@ -38,9 +46,16 @@ const AdmissionsSettings = () => {
   const [admissionsOpen, setAdmissionsOpen] = useState(true);
   const [deadline, setDeadline] = useState<Date | undefined>(new Date("2024-03-15"));
   const [selectedClasses, setSelectedClasses] = useState<string[]>(["s1", "s2"]);
-  const [enabledFields, setEnabledFields] = useState<string[]>(
-    applicationFields.filter((f) => f.required).map((f) => f.id)
-  );
+  const [expandedClass, setExpandedClass] = useState<string | null>(null);
+  
+  // Per-class field settings - each class has its own enabled fields
+  const [classFieldSettings, setClassFieldSettings] = useState<ClassFieldSettings>(() => {
+    const initial: ClassFieldSettings = {};
+    availableClasses.forEach((c) => {
+      initial[c.id] = [...defaultRequiredFields];
+    });
+    return initial;
+  });
 
   const handleClassToggle = (classId: string) => {
     setSelectedClasses((prev) =>
@@ -50,15 +65,22 @@ const AdmissionsSettings = () => {
     );
   };
 
-  const handleFieldToggle = (fieldId: string) => {
+  const handleFieldToggle = (classId: string, fieldId: string) => {
     const field = applicationFields.find((f) => f.id === fieldId);
     if (field?.required) return;
 
-    setEnabledFields((prev) =>
-      prev.includes(fieldId)
-        ? prev.filter((id) => id !== fieldId)
-        : [...prev, fieldId]
-    );
+    setClassFieldSettings((prev) => {
+      const currentFields = prev[classId] || [...defaultRequiredFields];
+      const newFields = currentFields.includes(fieldId)
+        ? currentFields.filter((id) => id !== fieldId)
+        : [...currentFields, fieldId];
+      return { ...prev, [classId]: newFields };
+    });
+  };
+
+  const getEnabledFieldCount = (classId: string) => {
+    const fields = classFieldSettings[classId] || defaultRequiredFields;
+    return fields.length;
   };
 
   const handleSave = async () => {
@@ -160,83 +182,116 @@ const AdmissionsSettings = () => {
         </div>
       </div>
 
-      {/* Step 3: Classes */}
+      {/* Step 3: Classes with Per-Class Field Settings */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
             3
           </div>
-          <h2 className="text-lg font-semibold">Classes Accepting Applications</h2>
-        </div>
-        
-        <div className="bg-background rounded-xl border border-border p-6 ml-11">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {availableClasses.map((classItem) => (
-              <button
-                key={classItem.id}
-                onClick={() => handleClassToggle(classItem.id)}
-                className={cn(
-                  "flex items-center gap-3 p-4 rounded-lg border transition-all text-left",
-                  selectedClasses.includes(classItem.id)
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-muted/30"
-                )}
-              >
-                <div className={cn(
-                  "h-5 w-5 rounded border flex items-center justify-center transition-colors",
-                  selectedClasses.includes(classItem.id)
-                    ? "bg-primary border-primary"
-                    : "border-muted-foreground/30"
-                )}>
-                  {selectedClasses.includes(classItem.id) && (
-                    <Check className="h-3 w-3 text-primary-foreground" />
-                  )}
-                </div>
-                <span className="font-medium">{classItem.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Step 4: Application Fields */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
-            4
-          </div>
-          <h2 className="text-lg font-semibold">Application Form Fields</h2>
+          <h2 className="text-lg font-semibold">Classes & Application Fields</h2>
         </div>
         
         <div className="bg-background rounded-xl border border-border p-6 ml-11">
           <p className="text-sm text-muted-foreground mb-4">
-            Select which fields applicants must fill out. Required fields cannot be disabled.
+            Enable classes for admissions and customize which fields each class requires from applicants.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {applicationFields.map((field) => (
-              <div
-                key={field.id}
-                className={cn(
-                  "flex items-center gap-3 p-3 rounded-lg border transition-colors",
-                  enabledFields.includes(field.id)
-                    ? "border-primary/30 bg-primary/5"
-                    : "border-border",
-                  field.required && "opacity-60"
-                )}
-              >
-                <Checkbox
-                  checked={enabledFields.includes(field.id)}
-                  onCheckedChange={() => handleFieldToggle(field.id)}
-                  disabled={field.required}
-                />
-                <div className="flex-1">
-                  <span className="font-medium text-sm">{field.name}</span>
-                  {field.required && (
-                    <span className="text-xs text-muted-foreground ml-2">(Required)</span>
-                  )}
-                </div>
-              </div>
-            ))}
+          
+          <div className="space-y-3">
+            {availableClasses.map((classItem) => {
+              const isSelected = selectedClasses.includes(classItem.id);
+              const isExpanded = expandedClass === classItem.id;
+              const enabledFields = classFieldSettings[classItem.id] || defaultRequiredFields;
+              
+              return (
+                <Collapsible
+                  key={classItem.id}
+                  open={isExpanded && isSelected}
+                  onOpenChange={(open) => setExpandedClass(open ? classItem.id : null)}
+                >
+                  <div
+                    className={cn(
+                      "rounded-lg border transition-all",
+                      isSelected ? "border-primary/50 bg-primary/5" : "border-border"
+                    )}
+                  >
+                    {/* Class Header */}
+                    <div className="flex items-center gap-3 p-4">
+                      <button
+                        onClick={() => handleClassToggle(classItem.id)}
+                        className={cn(
+                          "h-5 w-5 rounded border flex items-center justify-center transition-colors flex-shrink-0",
+                          isSelected
+                            ? "bg-primary border-primary"
+                            : "border-muted-foreground/30"
+                        )}
+                      >
+                        {isSelected && (
+                          <Check className="h-3 w-3 text-primary-foreground" />
+                        )}
+                      </button>
+                      
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium">{classItem.name}</span>
+                        {isSelected && (
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {getEnabledFieldCount(classItem.id)} fields enabled
+                          </span>
+                        )}
+                      </div>
+                      
+                      {isSelected && (
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 px-2">
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                            <span className="ml-1 text-xs">Fields</span>
+                          </Button>
+                        </CollapsibleTrigger>
+                      )}
+                    </div>
+                    
+                    {/* Expandable Field Settings */}
+                    <CollapsibleContent>
+                      <div className="border-t border-border/50 p-4 bg-muted/20">
+                        <p className="text-xs text-muted-foreground mb-3">
+                          Select which fields {classItem.name} applicants must fill out:
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {applicationFields.map((field) => (
+                            <div
+                              key={field.id}
+                              className={cn(
+                                "flex items-center gap-2 p-2 rounded-md border transition-colors",
+                                enabledFields.includes(field.id)
+                                  ? "border-primary/30 bg-primary/5"
+                                  : "border-transparent bg-background",
+                                field.required && "opacity-60"
+                              )}
+                            >
+                              <Checkbox
+                                checked={enabledFields.includes(field.id)}
+                                onCheckedChange={() => handleFieldToggle(classItem.id, field.id)}
+                                disabled={field.required}
+                                className="h-4 w-4"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm truncate block">{field.name}</span>
+                                {field.required && (
+                                  <span className="text-[10px] text-muted-foreground">(Required)</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </div>
+                </Collapsible>
+              );
+            })}
           </div>
         </div>
       </div>
