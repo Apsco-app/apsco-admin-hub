@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, GraduationCap, Users, FileCheck, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,10 +40,7 @@ const Login = () => {
     if (!validateForm()) return;
     
     setIsLoading(true);
-    
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
     setIsLoading(false);
     navigate("/dashboard");
   };
@@ -55,32 +52,105 @@ const Login = () => {
     navigate("/dashboard");
   };
 
+  const features = [
+    { icon: Users, label: "Manage Applicants" },
+    { icon: FileCheck, label: "Verified Documents" },
+    { icon: TrendingUp, label: "Analytics Dashboard" },
+    { icon: GraduationCap, label: "Class Management" },
+  ];
+
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Form */}
-      <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 xl:px-24">
-        <div className="w-full max-w-md mx-auto">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-8">
+      {/* Left Side - Hero Visual */}
+      <div className="hidden lg:flex flex-1 relative overflow-hidden">
+        {/* Background with gradient and pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }} />
+        
+        {/* Floating shapes */}
+        <div className="absolute top-20 left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
+        
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-center p-12 xl:p-20">
+          <div className="max-w-lg">
+            {/* Logo */}
+            <div className="flex items-center gap-4 mb-12">
+              <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                <img src={apscoLogo} alt="APSCO" className="h-12 w-12 filter brightness-0 invert" />
+              </div>
+              <span className="text-3xl font-bold text-white tracking-tight">APSCO</span>
+            </div>
+            
+            {/* Headline */}
+            <h1 className="text-4xl xl:text-5xl font-bold text-white mb-6 leading-tight">
+              School Admissions
+              <br />
+              <span className="text-white/80">Made Simple</span>
+            </h1>
+            
+            <p className="text-lg text-white/70 mb-12 leading-relaxed">
+              Streamline your enrollment process with AI-powered document verification and real-time applicant tracking.
+            </p>
+            
+            {/* Feature pills */}
+            <div className="flex flex-wrap gap-3">
+              {features.map((feature, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20"
+                >
+                  <feature.icon className="h-4 w-4 text-white/80" />
+                  <span className="text-sm font-medium text-white/90">{feature.label}</span>
+                </div>
+              ))}
+            </div>
+            
+            {/* Stats */}
+            <div className="mt-16 grid grid-cols-3 gap-8">
+              <div>
+                <div className="text-3xl font-bold text-white">500+</div>
+                <div className="text-sm text-white/60">Schools</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-white">50K+</div>
+                <div className="text-sm text-white/60">Applications</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-white">98%</div>
+                <div className="text-sm text-white/60">Satisfaction</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Form */}
+      <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 xl:px-24 bg-background">
+        <div className="w-full max-w-md mx-auto animate-fade-in">
+          {/* Mobile Logo */}
+          <div className="flex items-center gap-3 mb-8 lg:hidden">
             <img src={apscoLogo} alt="APSCO" className="h-10 w-10" />
             <span className="text-2xl font-bold text-foreground">APSCO</span>
           </div>
 
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-foreground mb-2">Welcome back</h1>
-            <p className="text-muted-foreground">Sign in to your school admin account</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Welcome back</h1>
+            <p className="text-muted-foreground">Sign in to manage your school admissions</p>
           </div>
 
           {/* Google Sign In */}
           <Button
             type="button"
             variant="outline"
-            className="w-full h-11 mb-6"
+            className="w-full h-12 mb-6 text-base font-medium shadow-sm hover:shadow-md transition-shadow"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
           >
-            <img src={googleIcon} alt="Google" className="h-5 w-5 mr-2" />
+            <img src={googleIcon} alt="Google" className="h-5 w-5 mr-3" />
             Continue with Google
           </Button>
 
@@ -90,21 +160,21 @@ const Login = () => {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">or continue with email</span>
+              <span className="bg-background px-3 text-muted-foreground">or</span>
             </div>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@school.edu"
+                placeholder="you@school.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={errors.email ? "border-destructive" : ""}
+                className={`h-12 text-base ${errors.email ? "border-destructive" : ""}`}
                 disabled={isLoading}
               />
               {errors.email && (
@@ -113,7 +183,12 @@ const Login = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <Link to="/auth/forgot-password" className="text-sm text-primary hover:underline">
+                  Forgot?
+                </Link>
+              </div>
               <div className="relative">
                 <Input
                   id="password"
@@ -121,15 +196,15 @@ const Login = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={errors.password ? "border-destructive pr-10" : "pr-10"}
+                  className={`h-12 text-base pr-12 ${errors.password ? "border-destructive" : ""}`}
                   disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
               {errors.password && (
@@ -137,16 +212,10 @@ const Login = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-end">
-              <Link to="/auth/forgot-password" className="text-sm text-primary hover:underline">
-                Forgot password?
-              </Link>
-            </div>
-
-            <Button type="submit" className="w-full h-11" disabled={isLoading}>
+            <Button type="submit" className="w-full h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-shadow" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                   Signing in...
                 </>
               ) : (
@@ -156,22 +225,11 @@ const Login = () => {
           </form>
 
           {/* Register Link */}
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link to="/auth/register" className="text-primary font-medium hover:underline">
+          <p className="mt-8 text-center text-muted-foreground">
+            New to APSCO?{" "}
+            <Link to="/auth/register" className="text-primary font-semibold hover:underline">
               Register your school
             </Link>
-          </p>
-        </div>
-      </div>
-
-      {/* Right Side - Visual */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary to-primary/80 items-center justify-center p-12">
-        <div className="text-center text-primary-foreground max-w-md">
-          <img src={apscoLogo} alt="APSCO" className="h-24 w-24 mx-auto mb-8 filter brightness-0 invert" />
-          <h2 className="text-3xl font-bold mb-4">School Admissions Made Simple</h2>
-          <p className="text-lg opacity-90">
-            Manage student applications, track admissions, and streamline your enrollment process with APSCO.
           </p>
         </div>
       </div>
