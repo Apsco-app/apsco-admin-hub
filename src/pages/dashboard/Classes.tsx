@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Plus, Trash2, Users, Edit2 } from "lucide-react";
+import { Plus, Trash2, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClassItem {
@@ -36,6 +46,10 @@ const Classes = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [newClassCapacity, setNewClassCapacity] = useState("");
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; classItem: ClassItem | null }>({
+    open: false,
+    classItem: null,
+  });
 
   const handleAddClass = () => {
     if (!newClassName.trim() || !newClassCapacity) return;
@@ -55,16 +69,18 @@ const Classes = () => {
 
     toast({
       title: "Class Added",
-      description: `${newClassName} has been added successfully.`,
+      description: `${newClassName} has been added.`,
     });
   };
 
-  const handleDeleteClass = (id: string, name: string) => {
-    setClasses((prev) => prev.filter((c) => c.id !== id));
+  const handleDeleteClass = () => {
+    if (!deleteDialog.classItem) return;
+    setClasses((prev) => prev.filter((c) => c.id !== deleteDialog.classItem!.id));
     toast({
       title: "Class Removed",
-      description: `${name} has been removed.`,
+      description: `${deleteDialog.classItem.name} has been removed.`,
     });
+    setDeleteDialog({ open: false, classItem: null });
   };
 
   const toggleAcceptingApplications = (id: string) => {
@@ -73,15 +89,20 @@ const Classes = () => {
         c.id === id ? { ...c, acceptingApplications: !c.acceptingApplications } : c
       )
     );
+    const classItem = classes.find((c) => c.id === id);
+    toast({
+      title: classItem?.acceptingApplications ? "Applications Closed" : "Applications Open",
+      description: `${classItem?.name} is now ${classItem?.acceptingApplications ? "closed" : "open"} for applications.`,
+    });
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in max-w-3xl">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Classes</h1>
-          <p className="text-muted-foreground">Manage classes and enrollment capacity</p>
+          <p className="text-muted-foreground">Manage classes and admissions</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -115,11 +136,7 @@ const Classes = () => {
                 />
               </div>
               <div className="flex gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setIsDialogOpen(false)}
-                >
+                <Button variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button className="flex-1" onClick={handleAddClass}>
@@ -131,106 +148,64 @@ const Classes = () => {
         </Dialog>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-border">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{classes.length}</p>
-                <p className="text-sm text-muted-foreground">Total Classes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-success/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-success" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {classes.filter((c) => c.acceptingApplications).length}
-                </p>
-                <p className="text-sm text-muted-foreground">Accepting Applications</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-lg bg-accent flex items-center justify-center">
-                <Users className="h-6 w-6 text-accent-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {classes.reduce((acc, c) => acc + c.enrolled, 0)}
-                </p>
-                <p className="text-sm text-muted-foreground">Total Enrolled</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Classes Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Classes List */}
+      <div className="bg-background rounded-xl border border-border divide-y divide-border">
         {classes.map((classItem) => (
-          <Card key={classItem.id} className="border-border">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{classItem.name}</CardTitle>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon">
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteClass(classItem.id, classItem.name)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+          <div
+            key={classItem.id}
+            className="flex items-center justify-between p-5 hover:bg-muted/20 transition-colors"
+          >
+            <div className="flex items-center gap-4">
+              <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Settings2 className="h-5 w-5 text-primary" />
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
               <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-muted-foreground">Enrollment</span>
-                  <span className="font-medium">
-                    {classItem.enrolled} / {classItem.capacity}
-                  </span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{
-                      width: `${(classItem.enrolled / classItem.capacity) * 100}%`,
-                    }}
-                  />
-                </div>
+                <p className="font-semibold text-foreground">{classItem.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {classItem.enrolled} / {classItem.capacity} enrolled
+                </p>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Accepting Applications</span>
-                <Button
-                  variant={classItem.acceptingApplications ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => toggleAcceptingApplications(classItem.id)}
-                >
-                  {classItem.acceptingApplications ? "Yes" : "No"}
-                </Button>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground hidden sm:block">
+                  {classItem.acceptingApplications ? "Open" : "Closed"}
+                </span>
+                <Switch
+                  checked={classItem.acceptingApplications}
+                  onCheckedChange={() => toggleAcceptingApplications(classItem.id)}
+                />
               </div>
-            </CardContent>
-          </Card>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setDeleteDialog({ open: true, classItem })}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         ))}
       </div>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Class</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {deleteDialog.classItem?.name}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteClass} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

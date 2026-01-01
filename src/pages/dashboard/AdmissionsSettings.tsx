@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Settings2, Save, Loader2 } from "lucide-react";
+import { CalendarIcon, Save, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
@@ -20,7 +19,7 @@ const availableClasses = [
   { id: "s6", name: "Senior 6" },
 ];
 
-const requiredFields = [
+const applicationFields = [
   { id: "fullName", name: "Full Name", required: true },
   { id: "dateOfBirth", name: "Date of Birth", required: true },
   { id: "gender", name: "Gender", required: true },
@@ -40,7 +39,7 @@ const AdmissionsSettings = () => {
   const [deadline, setDeadline] = useState<Date | undefined>(new Date("2024-03-15"));
   const [selectedClasses, setSelectedClasses] = useState<string[]>(["s1", "s2"]);
   const [enabledFields, setEnabledFields] = useState<string[]>(
-    requiredFields.filter((f) => f.required).map((f) => f.id)
+    applicationFields.filter((f) => f.required).map((f) => f.id)
   );
 
   const handleClassToggle = (classId: string) => {
@@ -52,8 +51,8 @@ const AdmissionsSettings = () => {
   };
 
   const handleFieldToggle = (fieldId: string) => {
-    const field = requiredFields.find((f) => f.id === fieldId);
-    if (field?.required) return; // Can't disable required fields
+    const field = applicationFields.find((f) => f.id === fieldId);
+    if (field?.required) return;
 
     setEnabledFields((prev) =>
       prev.includes(fieldId)
@@ -73,7 +72,7 @@ const AdmissionsSettings = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in max-w-3xl">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -95,140 +94,152 @@ const AdmissionsSettings = () => {
         </Button>
       </div>
 
-      {/* Main Settings */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Admissions Status */}
-        <Card className="border-border">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Settings2 className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle>Admissions Status</CardTitle>
-                <CardDescription>Control whether you're accepting applications</CardDescription>
-              </div>
+      {/* Step 1: Admissions Status */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
+            1
+          </div>
+          <h2 className="text-lg font-semibold">Admissions Status</h2>
+        </div>
+        
+        <div className="bg-background rounded-xl border border-border p-6 ml-11">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="admissions-toggle" className="text-base font-medium">
+                Accept Applications
+              </Label>
+              <p className="text-sm text-muted-foreground mt-1">
+                {admissionsOpen
+                  ? "Your school is currently accepting applications"
+                  : "Applications are currently closed"}
+              </p>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="admissions-toggle" className="font-medium">
-                  Accept Applications
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  {admissionsOpen
-                    ? "Your school is currently accepting applications"
-                    : "Applications are currently closed"}
-                </p>
-              </div>
-              <Switch
-                id="admissions-toggle"
-                checked={admissionsOpen}
-                onCheckedChange={setAdmissionsOpen}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Admission Deadline</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !deadline && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {deadline ? format(deadline, "PPP") : "Select deadline"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={deadline}
-                    onSelect={setDeadline}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Classes Accepting Applications */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle>Classes Accepting Applications</CardTitle>
-            <CardDescription>Select which classes are open for enrollment</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              {availableClasses.map((classItem) => (
-                <div
-                  key={classItem.id}
-                  className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
-                    selectedClasses.includes(classItem.id)
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:bg-muted/50"
-                  )}
-                  onClick={() => handleClassToggle(classItem.id)}
-                >
-                  <Checkbox
-                    checked={selectedClasses.includes(classItem.id)}
-                    onCheckedChange={() => handleClassToggle(classItem.id)}
-                  />
-                  <span className="font-medium">{classItem.name}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+            <Switch
+              id="admissions-toggle"
+              checked={admissionsOpen}
+              onCheckedChange={setAdmissionsOpen}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Application Form Fields */}
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle>Application Form Fields</CardTitle>
-          <CardDescription>
-            Choose which fields to include in the application form. Required fields cannot be
-            disabled.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {requiredFields.map((field) => (
+      {/* Step 2: Deadline */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
+            2
+          </div>
+          <h2 className="text-lg font-semibold">Application Deadline</h2>
+        </div>
+        
+        <div className="bg-background rounded-xl border border-border p-6 ml-11">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full sm:w-auto justify-start text-left font-normal",
+                  !deadline && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {deadline ? format(deadline, "PPP") : "Select deadline"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={deadline}
+                onSelect={setDeadline}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      {/* Step 3: Classes */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
+            3
+          </div>
+          <h2 className="text-lg font-semibold">Classes Accepting Applications</h2>
+        </div>
+        
+        <div className="bg-background rounded-xl border border-border p-6 ml-11">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {availableClasses.map((classItem) => (
+              <button
+                key={classItem.id}
+                onClick={() => handleClassToggle(classItem.id)}
+                className={cn(
+                  "flex items-center gap-3 p-4 rounded-lg border transition-all text-left",
+                  selectedClasses.includes(classItem.id)
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-muted/30"
+                )}
+              >
+                <div className={cn(
+                  "h-5 w-5 rounded border flex items-center justify-center transition-colors",
+                  selectedClasses.includes(classItem.id)
+                    ? "bg-primary border-primary"
+                    : "border-muted-foreground/30"
+                )}>
+                  {selectedClasses.includes(classItem.id) && (
+                    <Check className="h-3 w-3 text-primary-foreground" />
+                  )}
+                </div>
+                <span className="font-medium">{classItem.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Step 4: Application Fields */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
+            4
+          </div>
+          <h2 className="text-lg font-semibold">Application Form Fields</h2>
+        </div>
+        
+        <div className="bg-background rounded-xl border border-border p-6 ml-11">
+          <p className="text-sm text-muted-foreground mb-4">
+            Select which fields applicants must fill out. Required fields cannot be disabled.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {applicationFields.map((field) => (
               <div
                 key={field.id}
                 className={cn(
-                  "flex items-center justify-between p-3 rounded-lg border transition-colors",
+                  "flex items-center gap-3 p-3 rounded-lg border transition-colors",
                   enabledFields.includes(field.id)
                     ? "border-primary/30 bg-primary/5"
                     : "border-border",
-                  field.required && "opacity-75"
+                  field.required && "opacity-60"
                 )}
               >
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    checked={enabledFields.includes(field.id)}
-                    onCheckedChange={() => handleFieldToggle(field.id)}
-                    disabled={field.required}
-                  />
-                  <div>
-                    <span className="font-medium">{field.name}</span>
-                    {field.required && (
-                      <span className="text-xs text-muted-foreground ml-2">(Required)</span>
-                    )}
-                  </div>
+                <Checkbox
+                  checked={enabledFields.includes(field.id)}
+                  onCheckedChange={() => handleFieldToggle(field.id)}
+                  disabled={field.required}
+                />
+                <div className="flex-1">
+                  <span className="font-medium text-sm">{field.name}</span>
+                  {field.required && (
+                    <span className="text-xs text-muted-foreground ml-2">(Required)</span>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
