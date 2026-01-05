@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+// src/pages/dashboard/ApplicantDetail.tsx
+
+import { useState, useEffect, useCallback } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   User,
@@ -10,6 +12,13 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
+  Loader2,
+  MinusCircle,
+  FileBadge2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -29,253 +38,386 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase"; // <-- NEW
+import { useSchoolData } from "@/hooks/useSchoolData"; // <-- NEW
 
-const mockApplicantDetails = {
-  id: "1",
-  fullName: "John Mukasa",
-  formerSchool: "Kampala Primary School",
-  aggregates: 12,
-  dateOfBirth: "2010-03-15",
-  gender: "Male",
-  classApplied: "S1",
-  status: "pending" as "pending" | "accepted" | "rejected",
-  applicationDate: "2024-01-15",
-  email: "parent@email.com",
-  phone: "+256 700 123 456",
-  address: "Plot 45, Kampala Road, Kampala",
-  parentName: "Mr. Robert Mukasa",
-  subjects: [
-    { name: "English", grade: "D1" },
-    { name: "Mathematics", grade: "C3" },
-    { name: "Science", grade: "D2" },
-    { name: "Social Studies", grade: "C4" },
-  ],
-  documents: [
-    { name: "PLE Results Slip", type: "pdf" },
-    { name: "Birth Certificate", type: "pdf" },
-    { name: "Passport Photo", type: "image" },
-    { name: "School Leaving Letter", type: "pdf" },
-  ],
+type ApplicantStatus = "pending" | "accepted" | "rejected";
+
+// Detailed Applicant Interface combining joins
+interface ApplicantDetail {
+  id: string;
+  full_name: string;
+  status: ApplicantStatus;
+  application_date: string;
+  class_name: string;
+  former_school: string | null;
+  aggregates: any; // jsonb for results
+  
+  // Profile (Contact/Guardian)
+  guardian_name: string | null;
+  guardian_phone: string | null;
+  guardian_email: string | null;
+
+  // Documents
+  documents: Array<{
+    id: string;
+    file_path: string;
+    file_name: string;
+    document_type: string;
+    uploaded_at: string;
+  }>;
+  
+  // Custom form fields (from aggregates or application_data jsonb)
+  application_data: any;
+}
+
+// Helper to format date
+const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    });
 };
 
 const ApplicantDetail = () => {
-  const { id } = useParams();
+  const { applicantId } = useParams<{ applicantId: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [applicant, setApplicant] = useState(mockApplicantDetails);
-  const [personalOpen, setPersonalOpen] = useState(true);
-  const [academicOpen, setAcademicOpen] = useState(true);
-  const [documentsOpen, setDocumentsOpen] = useState(true);
+  const { schoolId, isLoading: schoolLoading } = useSchoolData();
+
+  const [applicant, setApplicant] = useState<ApplicantDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     action: "accept" | "reject";
-  }>({ open: false, action: "accept" });
+  }>({
+    open: false,
+    action: "accept",
+  });
 
-  const handleAction = (action: "accept" | "reject") => {
-    const newStatus = action === "accept" ? "accepted" : "rejected";
+  // --- Data Fetching ---
+  const fetchApplicantDetail = useCallback(async () => {
+    if (!applicantId || !schoolId) return;
+    
+    setIsLoading(true);
+    setError(null);
+
+    // Fetch applicant details, joining profile and documents
+    const { data, error } = await supabase
+      .from('applicants')
+      .select(`
+        id, 
+        full_name, 
+        status, 
+        application_date,
+        former_school,
+        aggregates,
+        application_data,
+        classes (name),
+        profiles (full_name, phone, email),
+        applicant_documents (id, file_path, file_name, document_type, uploaded_at)
+      `)
+      .eq('id', applicantId)
+      .eq('school_id', schoolId) // Ensure this applicant belongs to the school
+      .single();
+
+    if (error) {
+      console.error("Error fetching applicant detail:", error);
+      setError("Failed to load applicant data. Applicant not found or access denied.");
+      setApplicant(null);
+    } else if (data) {
+      const class_name = Array.isArray(data.classes) ? (data.classes[0] as any)?.name : (data.classes as any)?.name;
+      const profile = Array.isArray(data.profiles) ? (data.profiles[0] as any) : (data.profiles as any);
+      
+      setApplicant({
+        id: data.id,
+        full_name: data.full_name,
+        status: data.status as ApplicantStatus,
+        application_date: data.application_date,
+        class_name: class_name || 'N/A',
+        former_school: data.former_school,
+        aggregates: data.aggregates,
+        application_data: data.application_data,
+        
+        guardian_name: profile?.full_name || 'N/A',
+        guardian_phone: profile?.phone || 'N/A',
+        guardian_email: profile?.email || 'N/A',
+
+        documents: data.applicant_documents,
+      } as ApplicantDetail);
+    }
+    
+    setIsLoading(false);
+  }, [applicantId, schoolId]);
+
+  useEffect(() => {
+    if (schoolId && applicantId) {
+        fetchApplicantDetail();
+    }
+  }, [schoolId, applicantId, fetchApplicantDetail]);
+
+  // --- Status Update Handler ---
+  const handleStatusUpdate = async (newStatus: ApplicantStatus) => {
+    if (!applicant) return;
+    
+    setConfirmDialog({ ...confirmDialog, open: false });
+    setIsLoading(true);
+
+    const { error } = await supabase
+      .from('applicants')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', applicant.id);
+
+    setIsLoading(false);
+
+    if (error) {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      console.error("Status update error:", error);
+      return;
+    }
+
+    // Success: Update local state
     setApplicant({ ...applicant, status: newStatus });
     toast({
-      title: `Application ${action === "accept" ? "Accepted" : "Rejected"}`,
-      description: action === "reject" 
-        ? `${applicant.fullName} will be removed from the list in 24 hours.`
-        : `${applicant.fullName}'s application has been accepted.`,
+      title: "Status Updated",
+      description: `Application status changed to ${newStatus}.`,
     });
-    setConfirmDialog({ open: false, action: "accept" });
   };
 
-  return (
-    <div className="space-y-6 animate-fade-in max-w-5xl">
-      {/* Back Button */}
-      <Button variant="ghost" asChild className="-ml-2">
-        <Link to="/dashboard/applicants">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Applicants
-        </Link>
-      </Button>
+  // --- Document Download Handler ---
+  const handleDownloadDocument = async (filePath: string, fileName: string) => {
+    if (filePath.startsWith('http')) {
+        // Assume direct link if it's a full URL
+        window.open(filePath, '_blank');
+        return;
+    }
+    
+    setIsLoading(true);
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    const { data, error } = await supabase.storage
+        .from('applicant_documents') // Assuming this is your storage bucket name
+        .createSignedUrl(filePath, 60); // URL valid for 60 seconds
+
+    setIsLoading(false);
+
+    if (error) {
+        console.error('Error creating signed URL:', error);
+        toast({
+            title: "Download Failed",
+            description: "Could not create a secure link to download the document.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    if (data?.signedUrl) {
+        // Use a hidden link trick to trigger the download
+        const link = document.createElement('a');
+        link.href = data.signedUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+  };
+
+
+  // --- Render Logic ---
+
+  if (schoolLoading || isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-3 text-lg text-muted-foreground">Loading application details...</p>
+      </div>
+    );
+  }
+
+  if (error || !applicant) {
+    return (
+      <div className="space-y-4 text-center p-10 border border-border rounded-lg mt-8">
+        <MinusCircle className="h-10 w-10 text-destructive mx-auto" />
+        <h2 className="text-xl font-semibold text-destructive">Error Loading Applicant</h2>
+        <p className="text-muted-foreground">{error || "Applicant details could not be found."}</p>
+        <Button onClick={() => navigate('/dashboard/applicants')} variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Applicants
+        </Button>
+      </div>
+    );
+  }
+  
+  const currentStatus = applicant.status;
+  const statusClassName = currentStatus === "accepted" ? "text-success bg-success/10 border-success/30" : 
+                          currentStatus === "rejected" ? "text-destructive bg-destructive/10 border-destructive/30" : 
+                          "text-warning bg-warning/10 border-warning/30";
+  
+  // Format aggregate for display
+  const aggregateDisplay = applicant.aggregates?.ple_aggregate || 
+                           applicant.aggregates?.o_level_points || 
+                           'N/A';
+  
+  // Extract custom data fields
+  const customDataFields = Object.entries(applicant.application_data || {})
+    .filter(([key]) => !['full_name', 'class_name', 'former_school'].includes(key.toLowerCase().replace(/[^a-z0-9]/g, '_')));
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header and Actions */}
+      <div className="flex justify-between items-center pb-4 border-b border-border">
         <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-lg font-bold text-primary">
-              {applicant.fullName.split(" ").map((n) => n[0]).join("")}
-            </span>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{applicant.fullName}</h1>
-            <p className="text-muted-foreground">
-              Applying for {applicant.classApplied} • {new Date(applicant.applicationDate).toLocaleDateString()}
-            </p>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} disabled={isLoading}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold text-foreground">{applicant.full_name}</h1>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span>Applied for: <span className="font-semibold text-primary">{applicant.class_name}</span></span>
+              <span>•</span>
+              <span>Application ID: {applicant.id.slice(0, 8)}...</span>
+            </div>
           </div>
         </div>
-        <span
-          className={`status-badge ${
-            applicant.status === "accepted"
-              ? "status-accepted"
-              : applicant.status === "rejected"
-              ? "status-rejected"
-              : "status-pending"
-          }`}
-        >
-          {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
-        </span>
-      </div>
-
-      {/* Action Buttons */}
-      {applicant.status === "pending" && (
-        <div className="flex gap-3 p-4 bg-muted/30 rounded-xl border border-border">
+        
+        <div className="flex gap-3">
           <Button
             variant="outline"
-            className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            className="border-destructive text-destructive hover:bg-destructive/10"
             onClick={() => setConfirmDialog({ open: true, action: "reject" })}
+            disabled={currentStatus === "rejected" || isLoading}
           >
             <X className="h-4 w-4 mr-2" />
             Reject
           </Button>
-          <Button onClick={() => setConfirmDialog({ open: true, action: "accept" })}>
+          <Button
+            className="bg-success text-white hover:bg-success/90"
+            onClick={() => setConfirmDialog({ open: true, action: "accept" })}
+            disabled={currentStatus === "accepted" || isLoading}
+          >
             <Check className="h-4 w-4 mr-2" />
             Accept
           </Button>
         </div>
-      )}
+      </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Student Details */}
-        <div className="space-y-4">
-          {/* Personal Info */}
-          <Collapsible open={personalOpen} onOpenChange={setPersonalOpen}>
-            <div className="bg-background rounded-xl border border-border overflow-hidden">
-              <CollapsibleTrigger asChild>
-                <button className="flex items-center justify-between w-full p-4 hover:bg-muted/30 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <User className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">Personal Information</span>
-                  </div>
-                  {personalOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="px-4 pb-4 space-y-4">
-                  <Separator />
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Full Name</p>
-                      <p className="font-medium">{applicant.fullName}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Gender</p>
-                      <p className="font-medium">{applicant.gender}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Date of Birth</p>
-                      <p className="font-medium">{new Date(applicant.dateOfBirth).toLocaleDateString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Parent/Guardian</p>
-                      <p className="font-medium">{applicant.parentName}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Phone</p>
-                      <p className="font-medium">{applicant.phone}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="font-medium">{applicant.email}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Address</p>
-                    <p className="font-medium">{applicant.address}</p>
-                  </div>
-                </div>
-              </CollapsibleContent>
+      {/* Main Content: Status, Details, Documents */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Column 1: Core Details */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Status Card */}
+          <div className={`p-4 rounded-lg border ${statusClassName} flex items-center justify-between`}>
+            <div className="flex items-center gap-3">
+              <FileBadge2 className="h-5 w-5" />
+              <span className="font-semibold">Application Status:</span>
             </div>
+            <span className="text-lg font-bold uppercase">
+              {currentStatus}
+            </span>
+          </div>
+
+          {/* Applicant Information */}
+          <Collapsible defaultOpen className="border rounded-lg bg-card shadow-sm">
+            <CollapsibleTrigger className="flex justify-between w-full p-4 border-b border-border">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Applicant Information
+              </h2>
+              <ChevronDown className="h-4 w-4 collapsible-indicator transition-transform" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <DetailItem label="Full Name" value={applicant.full_name} icon={User} />
+                <DetailItem label="Date of Application" value={formatDate(applicant.application_date)} icon={Calendar} />
+                <DetailItem label="Former School" value={applicant.former_school || 'N/A'} icon={School} />
+                <DetailItem label="Aggregate/Points" value={aggregateDisplay} icon={FileText} />
+                
+                {customDataFields.map(([key, value]) => (
+                    <DetailItem 
+                        key={key} 
+                        label={key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} 
+                        value={String(value)}
+                        icon={FileText} 
+                    />
+                ))}
+              </div>
+            </CollapsibleContent>
           </Collapsible>
-
-          {/* Academic Info */}
-          <Collapsible open={academicOpen} onOpenChange={setAcademicOpen}>
-            <div className="bg-background rounded-xl border border-border overflow-hidden">
-              <CollapsibleTrigger asChild>
-                <button className="flex items-center justify-between w-full p-4 hover:bg-muted/30 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <School className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">Academic Information</span>
-                  </div>
-                  {academicOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="px-4 pb-4 space-y-4">
-                  <Separator />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Former School</p>
-                    <p className="font-medium">{applicant.formerSchool}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">PLE Aggregates</p>
-                    <p className="text-3xl font-bold text-primary">{applicant.aggregates}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-3">Subject Grades</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {applicant.subjects.map((subject) => (
-                        <div key={subject.name} className="flex justify-between items-center p-2 bg-muted/30 rounded-lg">
-                          <span className="text-sm">{subject.name}</span>
-                          <span className="font-semibold text-primary">{subject.grade}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </div>
+          
+          {/* Guardian/Contact Information */}
+          <Collapsible defaultOpen className="border rounded-lg bg-card shadow-sm">
+            <CollapsibleTrigger className="flex justify-between w-full p-4 border-b border-border">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <School className="h-5 w-5 text-primary" />
+                Contact Information
+              </h2>
+              <ChevronDown className="h-4 w-4 collapsible-indicator transition-transform" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <DetailItem label="Guardian Name" value={applicant.guardian_name} icon={User} />
+                <DetailItem label="Phone" value={applicant.guardian_phone} icon={Phone} />
+                <DetailItem label="Email" value={applicant.guardian_email} icon={Mail} />
+                {/* Note: You might want to add physical address here from profile if available */}
+              </div>
+            </CollapsibleContent>
           </Collapsible>
         </div>
 
-        {/* Right Column - Documents */}
-        <div>
-          <Collapsible open={documentsOpen} onOpenChange={setDocumentsOpen}>
-            <div className="bg-background rounded-xl border border-border overflow-hidden">
-              <CollapsibleTrigger asChild>
-                <button className="flex items-center justify-between w-full p-4 hover:bg-muted/30 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">Documents</span>
-                  </div>
-                  {documentsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="px-4 pb-4 space-y-3">
-                  <Separator />
-                  {applicant.documents.map((doc) => (
-                    <div
-                      key={doc.name}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-primary" />
+        {/* Column 2: Documents */}
+        <div className="space-y-6">
+          <Collapsible defaultOpen className="border rounded-lg bg-card shadow-sm">
+            <CollapsibleTrigger className="flex justify-between w-full p-4 border-b border-border">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Attached Documents ({applicant.documents.length})
+              </h2>
+              <ChevronUp className="h-4 w-4 collapsible-indicator transition-transform" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="p-4 space-y-3">
+                {applicant.documents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded.</p>
+                ) : (
+                    applicant.documents.map((doc) => (
+                        <div
+                            key={doc.id}
+                            className="flex items-center justify-between p-3 border rounded-md hover:bg-muted/50 transition-colors"
+                        >
+                            <div className="min-w-0">
+                                <p className="font-medium truncate">{doc.document_type}</p>
+                                <p className="text-xs text-muted-foreground truncate">{doc.file_name}</p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadDocument(doc.file_path, doc.file_name)}
+                                disabled={isLoading}
+                            >
+                                <Download className="h-3 w-3 mr-1" />
+                                View
+                            </Button>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">{doc.name}</p>
-                          <p className="text-xs text-muted-foreground uppercase">{doc.type}</p>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </div>
+                    ))
+                )}
+              </div>
+            </CollapsibleContent>
           </Collapsible>
         </div>
       </div>
 
       {/* Confirmation Dialog */}
-      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}>
+      <AlertDialog 
+        open={confirmDialog.open} 
+        onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -283,16 +425,18 @@ const ApplicantDetail = () => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmDialog.action === "accept" 
-                ? `Are you sure you want to accept ${applicant.fullName}'s application?`
-                : `Are you sure you want to reject ${applicant.fullName}'s application? They will be removed from the list in 24 hours.`
+                ? `Are you sure you want to accept ${applicant.full_name}'s application?`
+                : `Are you sure you want to reject ${applicant.full_name}'s application?`
               }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => handleAction(confirmDialog.action)}
+              // FIX: Map the dialog action ("accept" or "reject") to the final status ("accepted" or "rejected")
+              onClick={() => handleStatusUpdate(confirmDialog.action === "accept" ? "accepted" : "rejected")}
               className={confirmDialog.action === "reject" ? "bg-destructive hover:bg-destructive/90" : ""}
+              disabled={isLoading}
             >
               {confirmDialog.action === "accept" ? "Accept" : "Reject"}
             </AlertDialogAction>
@@ -302,5 +446,18 @@ const ApplicantDetail = () => {
     </div>
   );
 };
+
+// Simple reusable component for detail rows
+const DetailItem = ({ label, value, icon: Icon }: { label: string, value: string | number | null | undefined, icon: any }) => (
+    <div className="space-y-1">
+        <div className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-1">
+            <Icon className="h-3 w-3" />
+            {label}
+        </div>
+        <p className="font-semibold text-foreground break-words">{value || 'N/A'}</p>
+        <Separator className="mt-1 bg-border/50" />
+    </div>
+);
+
 
 export default ApplicantDetail;

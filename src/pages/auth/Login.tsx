@@ -1,14 +1,19 @@
+// src/pages/auth/Login.tsx
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, GraduationCap, Users, FileCheck, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast"; // <-- NOW AVAILABLE
+import { supabase } from "@/lib/supabase"; // <-- NOW AVAILABLE
 import apscoLogo from "@/assets/apsco-logo.png";
 import googleIcon from "@/assets/google-icon.png";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -27,7 +32,7 @@ const Login = () => {
     if (!password) {
       newErrors.password = "Password is required";
     } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+      newErrors.password = "Password must be at least 6 characters"; 
     }
     
     setErrors(newErrors);
@@ -40,16 +45,50 @@ const Login = () => {
     if (!validateForm()) return;
     
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    setErrors({}); 
+
+    // Supabase Email/Password Sign In
+    const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    });
+    
     setIsLoading(false);
+
+    if (error) {
+        toast({
+            title: "Login Failed",
+            description: error.message || "Invalid credentials or network error.",
+            variant: "destructive",
+        });
+        return; 
+    }
+    
+    // Successful login - AuthContext listener handles the session change
     navigate("/dashboard");
   };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    navigate("/dashboard");
+
+    // Supabase Google OAuth Sign In
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: `${window.location.origin}/dashboard`,
+        },
+    });
+
+    // Since this is a redirect, we only handle the error before the redirect
+    if (error) {
+        setIsLoading(false);
+        toast({
+            title: "Google Sign-In Failed",
+            description: error.message || "Could not start Google sign-in process.",
+            variant: "destructive",
+        });
+    }
+    // If no error, browser redirects to Google, then back to /dashboard
   };
 
   const features = [
@@ -63,20 +102,14 @@ const Login = () => {
     <div className="min-h-screen flex">
       {/* Left Side - Hero Visual */}
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
-        {/* Background with gradient and pattern */}
+        {/* Background, Floating Shapes, and Content (omitted for brevity) */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
         <div className="absolute inset-0 opacity-10" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }} />
         
-        {/* Floating shapes */}
-        <div className="absolute top-20 left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-        
-        {/* Content */}
         <div className="relative z-10 flex flex-col justify-center p-12 xl:p-20">
           <div className="max-w-lg">
-            {/* Logo */}
             <div className="flex items-center gap-4 mb-12">
               <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
                 <img src={apscoLogo} alt="APSCO" className="h-12 w-12 filter brightness-0 invert" />
@@ -84,44 +117,27 @@ const Login = () => {
               <span className="text-3xl font-bold text-white tracking-tight">APSCO</span>
             </div>
             
-            {/* Headline */}
             <h1 className="text-4xl xl:text-5xl font-bold text-white mb-6 leading-tight">
-              School Admissions
-              <br />
-              <span className="text-white/80">Made Simple</span>
+              School Admissions <br/><span className="text-white/80">Made Simple</span>
             </h1>
             
             <p className="text-lg text-white/70 mb-12 leading-relaxed">
               Streamline your enrollment process with AI-powered document verification and real-time applicant tracking.
             </p>
             
-            {/* Feature pills */}
             <div className="flex flex-wrap gap-3">
               {features.map((feature, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20"
-                >
+                <div key={index} className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
                   <feature.icon className="h-4 w-4 text-white/80" />
                   <span className="text-sm font-medium text-white/90">{feature.label}</span>
                 </div>
               ))}
             </div>
             
-            {/* Stats */}
             <div className="mt-16 grid grid-cols-3 gap-8">
-              <div>
-                <div className="text-3xl font-bold text-white">500+</div>
-                <div className="text-sm text-white/60">Schools</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-white">50K+</div>
-                <div className="text-sm text-white/60">Applications</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-white">98%</div>
-                <div className="text-sm text-white/60">Satisfaction</div>
-              </div>
+              <div><div className="text-3xl font-bold text-white">500+</div><div className="text-sm text-white/60">Schools</div></div>
+              <div><div className="text-3xl font-bold text-white">50K+</div><div className="text-sm text-white/60">Applications</div></div>
+              <div><div className="text-3xl font-bold text-white">98%</div><div className="text-sm text-white/60">Satisfaction</div></div>
             </div>
           </div>
         </div>

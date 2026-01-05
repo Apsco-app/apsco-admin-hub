@@ -1,224 +1,201 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Building2, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+// src/pages/dashboard/CreateSchool.tsx
+
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Building2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useSchoolData } from '@/hooks/useSchoolData';
 
 const CreateSchool = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    schoolName: "",
-    schoolType: "",
-    email: "",
-    phone: "",
-    location: "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    
+    // Check if school already exists for the user
+    // We cast to any as before, just in case the type definition isn't fully synchronized locally
+    const { schoolId, schoolStatus, isLoading: schoolLoading } = useSchoolData() as any; 
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+    const [schoolName, setSchoolName] = useState('');
+    const [address, setAddress] = useState('');
+    const [contactEmail, setContactEmail] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Redirect if school already exists
+    useEffect(() => {
+        if (!schoolLoading && schoolId) {
+            toast({
+                title: "School Already Setup",
+                description: "Redirecting to Dashboard...",
+            });
+            navigate('/dashboard');
+        }
+    }, [schoolId, schoolLoading, navigate, toast]);
 
-    if (!formData.schoolName.trim()) {
-      newErrors.schoolName = "School name is required";
+
+    const handleCreateSchool = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isSubmitting || !schoolName.trim() || !address.trim() || !contactEmail.trim()) {
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+
+        if (userError || !userData.user) {
+            toast({
+                title: "Authentication Error",
+                description: "You must be logged in to create a school.",
+                variant: "destructive",
+            });
+            setIsSubmitting(false);
+            return;
+        }
+
+        const userId = userData.user.id;
+
+        // 1. Create the new school entry
+        const { data: newSchool, error: schoolError } = await supabase
+            .from('schools')
+            .insert({
+                name: schoolName.trim(),
+                address: address.trim(),
+                contact_email: contactEmail.trim(),
+                user_id: userId, // Link the user to the school as the primary admin/creator
+                status: 'pending', // Set initial status to pending verification
+                is_admissions_open: false,
+            })
+            .select('id')
+            .single();
+
+        if (schoolError || !newSchool) {
+            toast({
+                title: "Creation Failed",
+                description: schoolError?.message || "Could not create the school profile.",
+                variant: "destructive",
+            });
+            setIsSubmitting(false);
+            return;
+        }
+        
+        const newSchoolId = newSchool.id;
+
+        // 2. Update the user's profile to link the new school_id
+        const { error: profileUpdateError } = await supabase
+            .from('profiles')
+            .update({ school_id: newSchoolId, updated_at: new Date().toISOString() })
+            .eq('id', userId);
+
+        if (profileUpdateError) {
+            // Log this error but proceed, as the school record exists. 
+            // In a real app, you might want to delete the school record here on failure.
+            console.error("Failed to link school to profile:", profileUpdateError);
+        }
+
+        // Success Feedback and Navigation
+        toast({
+            title: "School Profile Created!",
+            description: "Your school is now pending verification.",
+            action: <CheckCircle2 className="h-5 w-5 text-success" />,
+        });
+        
+        setIsSubmitting(false);
+        // Navigate to the dashboard, which will now display the "Verification Pending" banner
+        navigate('/dashboard');
+    };
+
+    if (schoolLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center h-[50vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="mt-3 text-lg text-muted-foreground">Checking school status...</p>
+            </div>
+        );
     }
-    if (!formData.schoolType) {
-      newErrors.schoolType = "Please select a school type";
-    }
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email";
-    }
-    if (!formData.phone) {
-      newErrors.phone = "Phone number is required";
-    }
-    if (!formData.location.trim()) {
-      newErrors.location = "Location is required";
+    
+    // If the school is already set up (checked in useEffect, but good to have a fallback render)
+    if (schoolId) {
+        return (
+            <div className="space-y-4 text-center p-8 border border-success rounded-lg mt-8 bg-success/5">
+                <CheckCircle2 className="h-10 w-10 text-success mx-auto" />
+                <h2 className="text-xl font-semibold text-success">School Setup Complete</h2>
+                <p className="text-muted-foreground">Your school status is **{schoolStatus}**. Redirecting...</p>
+            </div>
+        );
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
+    return (
+        <div className="max-w-xl mx-auto space-y-6 animate-fade-in pt-12">
+            <Card>
+                <CardHeader className="text-center">
+                    <Building2 className="h-10 w-10 text-primary mx-auto mb-2" />
+                    <CardTitle className="text-2xl">Create Your School Profile</CardTitle>
+                    <p className="text-sm text-muted-foreground">This is the first step to manage applications.</p>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleCreateSchool} className="space-y-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="school-name">Official School Name</Label>
+                            <Input
+                                id="school-name"
+                                value={schoolName}
+                                onChange={(e) => setSchoolName(e.target.value)}
+                                placeholder="e.g., St. Mary's High School"
+                                required
+                                disabled={isSubmitting}
+                            />
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <Label htmlFor="address">Physical Address / Location</Label>
+                            <Input
+                                id="address"
+                                value={address}
+                                onChange={(e) => setAddress(e.target.value)}
+                                placeholder="e.g., Plot 10, Kampala Road"
+                                required
+                                disabled={isSubmitting}
+                            />
+                        </div>
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+                        <div className="space-y-2">
+                            <Label htmlFor="contact-email">Admissions Contact Email</Label>
+                            <Input
+                                id="contact-email"
+                                type="email"
+                                value={contactEmail}
+                                onChange={(e) => setContactEmail(e.target.value)}
+                                placeholder="admissions@schoolname.com"
+                                required
+                                disabled={isSubmitting}
+                            />
+                        </div>
 
-    if (!validateForm()) return;
-
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-
-    toast({
-      title: "School Created Successfully",
-      description: "Your school is pending verification. We'll notify you once verified.",
-    });
-
-    navigate("/dashboard");
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto animate-fade-in">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Create Your School Profile</h1>
-        <p className="text-muted-foreground mt-1">
-          Complete your school details to start receiving applications
-        </p>
-      </div>
-
-      <Card className="border-border">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle>School Information</CardTitle>
-              <CardDescription>Enter your school's official details</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="schoolName">School Name</Label>
-              <Input
-                id="schoolName"
-                name="schoolName"
-                placeholder="St. Mary's Secondary School"
-                value={formData.schoolName}
-                onChange={handleChange}
-                className={errors.schoolName ? "border-destructive" : ""}
-                disabled={isLoading}
-              />
-              {errors.schoolName && (
-                <p className="text-sm text-destructive">{errors.schoolName}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="schoolType">School Type</Label>
-              <Select
-                value={formData.schoolType}
-                onValueChange={(value) => {
-                  setFormData((prev) => ({ ...prev, schoolType: value }));
-                  if (errors.schoolType) {
-                    setErrors((prev) => ({ ...prev, schoolType: "" }));
-                  }
-                }}
-                disabled={isLoading}
-              >
-                <SelectTrigger className={errors.schoolType ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Select school type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="secondary">Secondary School</SelectItem>
-                  <SelectItem value="university">University</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.schoolType && (
-                <p className="text-sm text-destructive">{errors.schoolType}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Official Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="admissions@school.edu"
-                value={formData.email}
-                onChange={handleChange}
-                className={errors.email ? "border-destructive" : ""}
-                disabled={isLoading}
-              />
-              {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                placeholder="+256 700 000 000"
-                value={formData.phone}
-                onChange={handleChange}
-                className={errors.phone ? "border-destructive" : ""}
-                disabled={isLoading}
-              />
-              {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                name="location"
-                placeholder="Kampala, Uganda"
-                value={formData.location}
-                onChange={handleChange}
-                className={errors.location ? "border-destructive" : ""}
-                disabled={isLoading}
-              />
-              {errors.location && (
-                <p className="text-sm text-destructive">{errors.location}</p>
-              )}
-            </div>
-
-            <div className="pt-4 flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => navigate(-1)}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" className="flex-1" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create School"
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <p className="text-center text-sm text-muted-foreground mt-6">
-        After submission, your school will be marked as{" "}
-        <span className="font-medium text-warning">Pending Verification</span>. Our team will
-        verify your details within 24-48 hours.
-      </p>
-    </div>
-  );
+                        <div className="p-3 bg-warning/10 border border-warning/50 rounded-md flex items-start space-x-2">
+                            <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+                            <p className="text-sm text-muted-foreground">
+                                After creation, your school will be set to **"pending"** status and requires administrator verification before admissions can be opened.
+                            </p>
+                        </div>
+                        
+                        <Button type="submit" className="w-full" disabled={isSubmitting}>
+                            {isSubmitting ? (
+                                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                            ) : (
+                                <Building2 className="h-5 w-5 mr-2" />
+                            )}
+                            Create School Profile
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
+        </div>
+    );
 };
 
 export default CreateSchool;

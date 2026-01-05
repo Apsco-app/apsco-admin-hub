@@ -14,15 +14,17 @@ import Classes from "./pages/dashboard/Classes";
 import AdmissionsSettings from "./pages/dashboard/AdmissionsSettings";
 import Analytics from "./pages/dashboard/Analytics";
 import Payments from "./pages/dashboard/Payments";
-import Ads from "./pages/dashboard/Ads";
+
 import Settings from "./pages/dashboard/Settings";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
+import { AuthProvider } from "./context/AuthContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <AuthProvider>
+   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -45,7 +47,7 @@ const App = () => (
             <Route path="admissions-settings" element={<AdmissionsSettings />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="payments" element={<Payments />} />
-            <Route path="ads" element={<Ads />} />
+
             <Route path="settings" element={<Settings />} />
           </Route>
           
@@ -55,6 +57,8 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </AuthProvider>
+
 );
 
 export default App;

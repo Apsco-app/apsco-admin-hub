@@ -1,14 +1,19 @@
+// src/pages/auth/Register.tsx
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Shield, Clock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast"; // <-- NOW AVAILABLE
+import { supabase } from "@/lib/supabase"; // <-- NOW AVAILABLE
 import apscoLogo from "@/assets/apsco-logo.png";
 import googleIcon from "@/assets/google-icon.png";
 
 const Register = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     schoolName: "",
     email: "",
@@ -60,16 +65,70 @@ const Register = () => {
     if (!validateForm()) return;
     
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    setErrors({});
+    
+    // Supabase Email/Password Sign Up
+    const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+            data: { 
+                // Store the school name as user metadata for initial setup
+                school_name: formData.schoolName 
+            }
+        }
+    });
+
     setIsLoading(false);
-    navigate("/dashboard/create-school");
+
+    if (error) {
+        toast({
+            title: "Registration Failed",
+            description: error.message || "An error occurred during sign up.",
+            variant: "destructive",
+        });
+        return;
+    }
+    
+    // Successful Sign Up
+    if (data.user) {
+        // User logged in directly after sign up (default Supabase behavior)
+        toast({
+            title: "Registration Successful",
+            description: "Account created! Please complete your school setup.",
+        });
+        navigate("/dashboard/create-school");
+    } else if (data.session === null) {
+        // Email confirmation is required (if configured in Supabase settings)
+        toast({
+            title: "Confirmation Required",
+            description: "A confirmation link has been sent to your email. Please verify your account before logging in.",
+        });
+        navigate("/auth/login"); 
+    }
   };
 
   const handleGoogleSignUp = async () => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    navigate("/dashboard/create-school");
+
+    // Supabase Google OAuth Sign Up/In
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            // Redirect back to the school creation page upon successful sign-up/in
+            redirectTo: `${window.location.origin}/dashboard/create-school`,
+        },
+    });
+    
+    if (error) {
+        setIsLoading(false);
+        toast({
+            title: "Google Sign-Up Failed",
+            description: error.message || "Could not start Google sign-up process.",
+            variant: "destructive",
+        });
+    }
+    // If successful, the redirect handles the rest.
   };
 
   const benefits = [
@@ -80,22 +139,15 @@ const Register = () => {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Hero Visual */}
+      {/* Left Side - Hero Visual (omitted for brevity) */}
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
-        {/* Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
         <div className="absolute inset-0 opacity-10" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }} />
         
-        {/* Floating shapes */}
-        <div className="absolute top-32 right-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-32 left-20 w-80 h-80 bg-white/5 rounded-full blur-3xl" />
-        
-        {/* Content */}
         <div className="relative z-10 flex flex-col justify-center p-12 xl:p-20">
           <div className="max-w-lg">
-            {/* Logo */}
             <div className="flex items-center gap-4 mb-12">
               <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
                 <img src={apscoLogo} alt="APSCO" className="h-12 w-12 filter brightness-0 invert" />
@@ -103,24 +155,17 @@ const Register = () => {
               <span className="text-3xl font-bold text-white tracking-tight">APSCO</span>
             </div>
             
-            {/* Headline */}
             <h1 className="text-4xl xl:text-5xl font-bold text-white mb-6 leading-tight">
-              Transform Your
-              <br />
-              <span className="text-white/80">Admissions Process</span>
+              Transform Your <br/><span className="text-white/80">Admissions Process</span>
             </h1>
             
             <p className="text-lg text-white/70 mb-12 leading-relaxed">
               Join hundreds of schools across Uganda using APSCO to modernize their student enrollment.
             </p>
             
-            {/* Benefits */}
             <div className="space-y-6">
               {benefits.map((benefit, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10"
-                >
+                <div key={index} className="flex items-start gap-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10">
                   <div className="p-2 bg-white/20 rounded-lg">
                     <benefit.icon className="h-5 w-5 text-white" />
                   </div>

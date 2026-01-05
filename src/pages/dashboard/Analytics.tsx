@@ -1,11 +1,15 @@
+// src/pages/dashboard/Analytics.tsx
+
+import { useState, useEffect, useCallback } from "react";
 import {
   TrendingUp,
-  TrendingDown,
   Users,
   CheckCircle2,
   XCircle,
   Clock,
   Calendar,
+  Loader2,
+  MinusCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -29,108 +33,206 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { supabase } from "@/lib/supabase";
+import { useSchoolData } from "@/hooks/useSchoolData";
 
-const monthlyData = [
-  { month: "Jan", applications: 45, accepted: 28, rejected: 8 },
-  { month: "Feb", applications: 52, accepted: 35, rejected: 10 },
-  { month: "Mar", applications: 38, accepted: 24, rejected: 6 },
-  { month: "Apr", applications: 65, accepted: 42, rejected: 12 },
-  { month: "May", applications: 48, accepted: 31, rejected: 9 },
-  { month: "Jun", applications: 55, accepted: 38, rejected: 11 },
-];
+// Interfaces for fetched data
+interface MonthlyApplicationData {
+  month_name: string;
+  applications: number;
+  accepted: number;
+  rejected: number;
+}
 
-const statusData = [
-  { name: "Accepted", value: 67, color: "hsl(142, 76%, 36%)" },
-  { name: "Pending", value: 42, color: "hsl(38, 92%, 50%)" },
-  { name: "Rejected", value: 15, color: "hsl(0, 72%, 51%)" },
-];
+interface ClassApplicationData {
+  class_name: string;
+  applications: number;
+}
 
-const classDistribution = [
-  { class: "S1", applications: 45 },
-  { class: "S2", applications: 32 },
-  { class: "S3", applications: 28 },
-  { class: "S4", applications: 19 },
-];
+interface AnalyticsData {
+  total_applicants: number;
+  accepted_count: number;
+  rejected_count: number;
+  pending_count: number;
+  monthly_applications: MonthlyApplicationData[];
+  class_applications: ClassApplicationData[];
+}
 
-const stats = [
-  {
-    name: "Total Applications",
-    value: "124",
-    change: "+12%",
-    trend: "up",
-    icon: Users,
-  },
-  {
-    name: "Acceptance Rate",
-    value: "54%",
-    change: "+5%",
-    trend: "up",
-    icon: CheckCircle2,
-  },
-  {
-    name: "Avg. Processing Time",
-    value: "2.3 days",
-    change: "-0.5 days",
-    trend: "up",
-    icon: Clock,
-  },
-  {
-    name: "Rejection Rate",
-    value: "12%",
-    change: "-2%",
-    trend: "down",
-    icon: XCircle,
-  },
-];
+const COLORS = ["hsl(var(--primary))", "hsl(var(--success))", "hsl(var(--destructive))", "hsl(var(--warning))"];
 
 const Analytics = () => {
-  return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
-          <p className="text-muted-foreground">Insights into your admissions performance</p>
+  const { schoolId, isLoading: schoolLoading } = useSchoolData();
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [timeframe, setTimeframe] = useState("last_6_months"); // State for potential future filtering
+
+  // --- Data Fetching ---
+  const fetchAnalyticsData = useCallback(async () => {
+    if (!schoolId) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    // ASSUMPTION: You have created a Supabase RPC function (or a view with filters) 
+    // named 'get_application_analytics' which returns all necessary structured data.
+    const { data: analyticsData, error: fetchError } = await supabase.rpc(
+      'get_application_analytics',
+      { p_school_id: schoolId } // Pass school_id as parameter
+    ).single();
+
+    if (fetchError) {
+      console.error("Error fetching analytics data:", fetchError);
+      setError("Failed to load analytics data. Please ensure the 'get_application_analytics' function exists and is correctly configured.");
+      setData(null);
+    } else if (analyticsData) {
+        // FIX: Cast analyticsData to 'any' to resolve 'unknown' type error
+        const data = analyticsData as any;
+
+        setData({
+            total_applicants: data.total_applicants || 0,
+            accepted_count: data.accepted_count || 0,
+            rejected_count: data.rejected_count || 0,
+            pending_count: data.pending_count || 0,
+            monthly_applications: data.monthly_applications || [],
+            class_applications: data.class_applications || [],
+        });
+    }
+
+    setIsLoading(false);
+  }, [schoolId]);
+
+  useEffect(() => {
+    if (schoolId) {
+      fetchAnalyticsData();
+    }
+  }, [schoolId, fetchAnalyticsData]);
+
+  // --- Derived Data for Charts ---
+
+  if (schoolLoading || isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-3 text-lg text-muted-foreground">Generating school analytics...</p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="space-y-4 text-center p-10 border border-border rounded-lg mt-8">
+        <MinusCircle className="h-10 w-10 text-destructive mx-auto" />
+        <h2 className="text-xl font-semibold text-destructive">Analytics Error</h2>
+        <p className="text-muted-foreground">{error || "No analytics data available for this school."}</p>
+      </div>
+    );
+  }
+
+  const {
+    total_applicants,
+    accepted_count,
+    rejected_count,
+    pending_count,
+    monthly_applications,
+    class_applications,
+  } = data;
+
+  const stats = [
+    {
+      name: "Total Applications",
+      value: total_applicants.toLocaleString(),
+      icon: Users,
+      color: "text-primary",
+    },
+    {
+      name: "Accepted Applicants",
+      value: accepted_count.toLocaleString(),
+      icon: CheckCircle2,
+      color: "text-success",
+    },
+    {
+      name: "Pending Review",
+      value: pending_count.toLocaleString(),
+      icon: Clock,
+      color: "text-warning",
+    },
+    {
+      name: "Rejected Applicants",
+      value: rejected_count.toLocaleString(),
+      icon: XCircle,
+      color: "text-destructive",
+    },
+  ];
+
+  const statusData = [
+    { name: "Accepted", value: accepted_count, color: COLORS[1] },
+    { name: "Pending", value: pending_count, color: COLORS[3] },
+    { name: "Rejected", value: rejected_count, color: COLORS[2] },
+  ].filter(d => d.value > 0); // Filter out zero values for better chart display
+
+  // Map monthly data for the chart
+  const monthlyChartData = monthly_applications.map(m => ({
+    month: m.month_name,
+    applications: m.applications,
+    accepted: m.accepted,
+    rejected: m.rejected,
+  }));
+
+  // Map class data for the chart
+  const classDistribution = class_applications.map(c => ({
+    class: c.class_name,
+    applications: c.applications,
+  }));
+  
+  // Custom Recharts Tooltip Content component
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="p-2 border rounded-md shadow-lg bg-card text-sm">
+          <p className="font-semibold text-foreground mb-1">{label}</p>
+          {payload.map((p: any, index: number) => (
+            <p key={index} style={{ color: p.color }}>
+              {p.name}: <span className="font-medium">{p.value}</span>
+            </p>
+          ))}
         </div>
-        <Select defaultValue="term1">
+      );
+    }
+    return null;
+  };
+
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-foreground">Admissions Analytics</h1>
+        <Select value={timeframe} onValueChange={setTimeframe} disabled={isLoading}>
           <SelectTrigger className="w-[180px]">
             <Calendar className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Select period" />
+            <SelectValue placeholder="Timeframe" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="term1">Term 1, 2024</SelectItem>
-            <SelectItem value="term2">Term 2, 2024</SelectItem>
-            <SelectItem value="term3">Term 3, 2024</SelectItem>
+            <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+            <SelectItem value="current_year">Current Year</SelectItem>
+            <SelectItem value="all_time">All Time</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
           <Card key={stat.name} className="border-border">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <stat.icon className="h-5 w-5 text-primary" />
-                </div>
-                <div
-                  className={`flex items-center gap-1 text-xs font-medium ${
-                    stat.trend === "up" ? "text-success" : "text-destructive"
-                  }`}
-                >
-                  {stat.trend === "up" ? (
-                    <TrendingUp className="h-3 w-3" />
-                  ) : (
-                    <TrendingDown className="h-3 w-3" />
-                  )}
-                  {stat.change}
-                </div>
-              </div>
-              <div className="mt-4">
-                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.name}</p>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.name}</CardTitle>
+              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stat.value}</div>
             </CardContent>
           </Card>
         ))}
@@ -138,27 +240,22 @@ const Analytics = () => {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Applications Over Time */}
+        {/* Monthly Trend */}
         <Card className="lg:col-span-2 border-border">
           <CardHeader>
-            <CardTitle className="text-lg">Applications Over Time</CardTitle>
+            <CardTitle className="text-lg">Application Trend (Last 6 Months)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData}>
+                <BarChart data={monthlyChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar dataKey="applications" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="accepted" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="applications" name="Total Applications" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="accepted" name="Accepted" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="rejected" name="Rejected" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -168,40 +265,39 @@ const Analytics = () => {
         {/* Status Distribution */}
         <Card className="border-border">
           <CardHeader>
-            <CardTitle className="text-lg">Status Distribution</CardTitle>
+            <CardTitle className="text-lg">Application Status Split</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="h-[250px] flex items-center justify-center">
+              {statusData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      labelLine={false}
+                    >
+                      {statusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-muted-foreground">No applications recorded yet.</p>
+              )}
             </div>
+            {/* Legend */}
             <div className="flex justify-center gap-4 mt-4">
-              {statusData.map((item) => (
-                <div key={item.name} className="flex items-center gap-2">
+              {statusData.map((item, index) => (
+                <div key={item.name} className="flex items-center">
                   <div
-                    className="h-3 w-3 rounded-full"
+                    className="h-3 w-3 rounded-full mr-2"
                     style={{ backgroundColor: item.color }}
                   />
                   <span className="text-sm text-muted-foreground">{item.name}</span>
@@ -223,17 +319,12 @@ const Analytics = () => {
               <LineChart data={classDistribution}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="class" stroke="hsl(var(--muted-foreground))" />
-                <YAxis stroke="hsl(var(--muted-foreground))" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                />
+                <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
                 <Line
                   type="monotone"
                   dataKey="applications"
+                  name="Applications"
                   stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   dot={{ fill: "hsl(var(--primary))", strokeWidth: 2 }}
