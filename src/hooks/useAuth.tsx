@@ -1,114 +1,105 @@
-// src/hooks/useAuth.ts
-import React, { useState, useEffect, useContext, ReactNode, FC } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { User } from '@supabase/supabase-js'; 
+// src/context/AuthContext.tsx (or src/hooks/useAuth.tsx)
+// Final Fix: Ensures 'logout' property exists and is implemented
 
-// === 1. Type Definitions ===
-interface UserProfile {
-  id: string;
-  email: string;
-  full_name: string | null;
-  school_id: string | null;
-}
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import { User, Session } from '@supabase/supabase-js';
 
+// 1. Define the correct type for the context
 interface AuthContextType {
-  user: User | null;
-  profile: UserProfile | null;
-  loading: boolean;
+    user: User | null;
+    session: Session | null;
+    isLoading: boolean;
+    login: (email: string, password: string) => Promise<void>;
+    logout: () => Promise<void>; // 🚨 CRITICAL FIX: The missing logout function definition
 }
 
-// === 2. Context Initialization (Exported for external use if needed) ===
-// This line *must* be clean and separated.
-export const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
+// 2. Create the context with a default value
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// === 3. Auth Provider Component ===
-interface AuthProviderProps {
-    children: ReactNode;
-}
+// 3. The Auth Provider Component
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const [user, setUser] = useState<User | null>(null);
+    const [session, setSession] = useState<Session | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-// **Structural Fix: Component Definition**
-export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // --- BEGIN FUNCTION BODIES (Contents unchanged) ---
-
-  const fetchProfile = async (currentUser: User) => {
-      const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select(`id, full_name, school_id`)
-          .eq('id', currentUser.id)
-          .single();
-
-      if (profileError) {
-          console.error("Error fetching profile:", profileError);
-          setProfile(null);
-      } else if (profileData) {
-          setProfile({
-              id: profileData.id,
-              email: currentUser.email || '', 
-              full_name: profileData.full_name,
-              school_id: profileData.school_id,
-          });
-      } else {
-           setProfile(null);
-      }
-      setLoading(false);
-  };
-  
-  const handleAuthChange = (currentUser: User | null) => {
-      setUser(currentUser);
-      if (currentUser) {
-          setLoading(true);
-          fetchProfile(currentUser);
-      } else {
-          setProfile(null);
-          setLoading(false);
-      }
-  };
-
-  useEffect(() => {
-    const { data: authSubscription } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        const currentUser = session?.user ?? null;
-        handleAuthChange(currentUser);
-      }
-    );
-    
-    supabase.auth.getSession().then(({ data }) => {
-        const session = data?.session;
-        const currentUser = session?.user ?? null;
+    useEffect(() => {
+        // Fetch the initial session and user data
+        const getInitialSession = async () => {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            
+            if (error) {
+                console.error("Supabase session error:", error);
+            }
+            
+            setSession(session);
+            setUser(session?.user ?? null);
+            setIsLoading(false);
+        };
         
-        if (!currentUser) {
-            setLoading(false);
+        getInitialSession();
+
+        // Listen for auth state changes
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+            (event, currentSession) => {
+                setSession(currentSession);
+                setUser(currentSession?.user ?? null);
+                setIsLoading(false);
+            }
+        );
+
+        return () => {
+            authListener?.subscription.unsubscribe();
+        };
+    }, []);
+
+    // Function to handle login (placeholder, assuming login is done elsewhere)
+    const login = async (email: string, password: string) => {
+        setIsLoading(true);
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+            console.error('Login error:', error.message);
         }
-        handleAuthChange(currentUser);
-    });
-
-    return () => {
-      if (authSubscription?.subscription) {
-        authSubscription.subscription.unsubscribe();
-      }
+        // AuthStateChange listener handles setting user/session
+        setIsLoading(false);
     };
-  }, []);
-  
-  // --- END FUNCTION BODIES ---
 
-  // Return block
-  return (
-    <AuthContext.Provider value={{ user, profile, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}; // <-- This brace MUST be the final one for the component definition
+    // 🚨 CRITICAL FIX: The actual logout implementation
+    const logout = async () => {
+        setIsLoading(true);
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            console.error('Logout error:', error.message);
+        } else {
+            // Clear local state immediately
+            setUser(null);
+            setSession(null);
+        }
+        setIsLoading(false);
+        // Important: Force a full page redirect after logout to ensure all state is cleared
+        window.location.href = '/login'; 
+    };
 
-// === 4. Custom Hook ===
+    const value = {
+        user,
+        session,
+        isLoading,
+        login,
+        logout, // Export the logout function
+    };
+
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+        </AuthContext.Provider>
+    );
+};
+
+// 4. Custom Hook for easy consumption
 export const useAuth = () => {
-  // We use the exported AuthContext variable here
-  const context = useContext(AuthContext); 
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
 };

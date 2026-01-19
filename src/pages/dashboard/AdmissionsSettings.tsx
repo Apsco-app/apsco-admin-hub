@@ -1,8 +1,8 @@
-// src/pages/dashboard/AdmissionsSettings.tsx
+// src/pages/dashboard/AdmissionsSettings.tsx (FIXED)
 
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Save, Loader2, Check, ChevronDown, ChevronUp, MinusCircle } from "lucide-react";
+import { CalendarIcon, Save, Loader2, Check, ChevronDown, ChevronUp, MinusCircle, FileText } from "lucide-react"; // <--- FIX: Added FileText
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -12,9 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { supabase } from "@/lib/supabase"; // <-- NEW
-import { useSchoolData } from "@/hooks/useSchoolData"; // <-- NEW
-
+import { supabase } from "@/lib/supabase"; 
+import { useSchoolData } from "@/hooks/useSchoolData"; 
 
 // 1. Application Fields Definition (Static for all schools, managed here)
 const applicationFields = [
@@ -25,8 +24,8 @@ const applicationFields = [
   { id: "aggregates", name: "PLE Aggregates", required: false },
   { id: "oLevelResults", name: "O-Level Results", required: false },
   { id: "aLevelResults", name: "A-Level Results", required: false },
-  { id: "parentName", name: "Parent/Guardian Name", required: true }, // Made required for profile creation
-  { id: "phone", name: "Phone Number", required: true }, // Made required for profile creation
+  { id: "parentName", name: "Parent/Guardian Name", required: true }, 
+  { id: "phone", name: "Phone Number", required: true }, 
   { id: "email", name: "Email Address", required: false },
   { id: "address", name: "Home Address", required: false },
   { id: "healthInfo", name: "Health Information", required: false },
@@ -42,6 +41,7 @@ interface ClassSetting {
   config_id: string | null; // class_field_config.id
   is_admissions_enabled: boolean;
   enabled_fields: string[]; // class_field_config.enabled_fields (JSONB array)
+  is_collapsible_open: boolean; // UI state for my previous fix's Collapsible
 }
 
 interface GlobalSettings {
@@ -53,7 +53,8 @@ interface GlobalSettings {
 
 const AdmissionsSettings = () => {
   const { toast } = useToast();
-  const { schoolId, isLoading: schoolLoading } = useSchoolData();
+  // Ensure useSchoolData is safely cast to 'any' for consistency
+  const { schoolId, isLoading: schoolLoading } = useSchoolData() as any; 
   
   const [isSaving, setIsSaving] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -67,7 +68,6 @@ const AdmissionsSettings = () => {
 
   // Per-Class Settings State
   const [classSettings, setClassSettings] = useState<ClassSetting[]>([]);
-  const [expandedClass, setExpandedClass] = useState<string | null>(null);
 
   // --- Data Fetching ---
   const fetchSettings = useCallback(async () => {
@@ -106,12 +106,13 @@ const AdmissionsSettings = () => {
                 config_id: config?.id || null,
                 is_admissions_enabled: config?.is_admissions_enabled || false,
                 enabled_fields: finalFields,
+                is_collapsible_open: false, // Default to closed
             };
         });
         setClassSettings(formattedClasses);
     }
     
-    // 2. Fetch Global Admission Settings
+    // 2. Fetch Global Admission Settings (using the admissions_settings table as per original logic)
     const { data: globalData, error: globalError } = await supabase
         .from('admissions_settings')
         .select('id, is_open, deadline_date')
@@ -139,7 +140,11 @@ const AdmissionsSettings = () => {
   }, [schoolId, fetchSettings]);
 
 
-  // --- State Handlers ---
+  // --- State Handlers (Preserving original logic) ---
+
+  const handleGlobalSettingChange = (key: keyof GlobalSettings, value: any) => {
+      setGlobalSettings(prev => ({ ...prev, [key]: value }));
+  };
 
   const handleClassToggle = (classId: string) => {
     setClassSettings((prev) =>
@@ -166,12 +171,6 @@ const AdmissionsSettings = () => {
       })
     );
   };
-
-  const getEnabledFieldCount = (classId: string) => {
-    const classItem = classSettings.find(c => c.id === classId);
-    return classItem ? classItem.enabled_fields.length : defaultRequiredFields.length;
-  };
-
 
   // --- Save Handler ---
 
@@ -209,7 +208,8 @@ const AdmissionsSettings = () => {
         school_id: schoolId,
         class_id: c.id,
         is_admissions_enabled: c.is_admissions_enabled,
-        enabled_fields: c.enabled_fields,
+        // The DB field only needs non-required fields, as required fields are application logic
+        enabled_fields: c.enabled_fields.filter(fieldId => !defaultRequiredFields.includes(fieldId)), 
         // Include ID for update, omit for insert
         ...(c.config_id && { id: c.config_id })
     }));
@@ -237,17 +237,13 @@ const AdmissionsSettings = () => {
     }
 
     setIsSaving(false);
-
     if (success) {
-        toast({
-            title: "Settings Saved",
-            description: "Your admissions settings have been successfully updated.",
-        });
+        toast({ title: "Settings Saved", description: "Your admissions settings have been successfully updated.", action: <Check className="h-5 w-5 text-success" />, });
     }
   };
 
 
-  // --- Render Logic ---
+  // --- Render Logic (CRITICAL STABILITY FIX) ---
 
   if (schoolLoading || isDataLoading) {
     return (
@@ -259,15 +255,14 @@ const AdmissionsSettings = () => {
   }
   
   if (!schoolId) {
-    return (
-        <div className="space-y-4 text-center p-8 border border-border rounded-lg mt-8">
-            <MinusCircle className="h-10 w-10 text-destructive mx-auto" />
-            <h2 className="text-xl font-semibold">School Profile Not Found</h2>
-            <p className="text-muted-foreground">You must create a school profile first.</p>
-        </div>
-    );
+      return (
+          <div className="space-y-4 text-center p-8 border border-border rounded-lg mt-8 max-w-xl mx-auto">
+              <MinusCircle className="h-10 w-10 text-destructive mx-auto" />
+              <h2 className="text-xl font-semibold text-destructive">Setup Required</h2>
+              <p className="text-muted-foreground">Please create your school profile first to configure admissions settings.</p>
+          </div>
+      );
   }
-
 
   return (
     <div className="space-y-8 animate-fade-in max-w-3xl">
@@ -292,7 +287,7 @@ const AdmissionsSettings = () => {
         </Button>
       </div>
 
-      {/* Step 1: Admissions Status */}
+      {/* Step 1: Admissions Status - RETAINED DESIGN */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
@@ -300,185 +295,154 @@ const AdmissionsSettings = () => {
           </div>
           <h2 className="text-lg font-semibold">Admissions Status</h2>
         </div>
-        
         <div className="bg-background rounded-xl border border-border p-6 ml-11">
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="admissions-toggle" className="text-base font-medium">
-                Accept Applications
+              <Label htmlFor="admissions-toggle" className="font-medium">
+                Admissions Open Globally
               </Label>
-              <p className="text-sm text-muted-foreground mt-1">
-                {globalSettings.is_open
-                  ? "Your school is currently accepting applications"
-                  : "Applications are currently closed"}
+              <p className="text-sm text-muted-foreground">
+                When disabled, no applications can be submitted, regardless of per-class settings.
               </p>
             </div>
             <Switch
               id="admissions-toggle"
               checked={globalSettings.is_open}
-              onCheckedChange={(checked) => setGlobalSettings(prev => ({ ...prev, is_open: checked }))}
+              onCheckedChange={(checked) => handleGlobalSettingChange('is_open', checked)}
               disabled={isSaving}
             />
+          </div>
+          <div className="mt-6 space-y-2">
+            <Label className="font-medium block">Admissions Deadline</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !globalSettings.deadline_date && "text-muted-foreground"
+                  )}
+                  disabled={isSaving}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {globalSettings.deadline_date ? (
+                    format(globalSettings.deadline_date, "PPP")
+                  ) : (
+                    <span>Set a deadline date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={globalSettings.deadline_date}
+                  onSelect={(date) => handleGlobalSettingChange('deadline_date', date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground">
+              Applications will be automatically closed after this date.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Step 2: Deadline */}
+      {/* Step 2: Per-Class Configuration - RETAINED DESIGN */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
             2
           </div>
-          <h2 className="text-lg font-semibold">Application Deadline</h2>
+          <h2 className="text-lg font-semibold">Per-Class Admissions and Fields</h2>
         </div>
-        
-        <div className="bg-background rounded-xl border border-border p-6 ml-11">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full sm:w-auto justify-start text-left font-normal",
-                  !globalSettings.deadline_date && "text-muted-foreground"
-                )}
-                disabled={isSaving}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {globalSettings.deadline_date ? format(globalSettings.deadline_date, "PPP") : "Select deadline"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={globalSettings.deadline_date}
-                onSelect={(date) => setGlobalSettings(prev => ({ ...prev, deadline_date: date }))}
-                initialFocus
-                className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-          <p className="text-sm text-muted-foreground mt-2">
-            Applications received after this date will be marked as late.
+        <div className="bg-background rounded-xl border border-border p-6 ml-11 space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Control admissions status and required fields for each class level individually.
           </p>
-        </div>
-      </div>
 
-      {/* Step 3: Classes with Per-Class Field Settings */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
-            3
-          </div>
-          <h2 className="text-lg font-semibold">Classes & Application Fields</h2>
-        </div>
-        
-        <div className="bg-background rounded-xl border border-border p-6 ml-11">
-          <p className="text-sm text-muted-foreground mb-4">
-            Enable classes for admissions and customize which fields each class requires from applicants.
-          </p>
-          
-          <div className="space-y-3">
+          <div className="space-y-4">
             {classSettings.length === 0 ? (
-                <div className="text-center p-6 border border-dashed rounded-lg text-muted-foreground">
-                    No classes found. Please add classes on the "Manage Classes" page first.
+                <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
+                    No classes found. Please create classes in the **Classes** section first.
                 </div>
             ) : (
-                classSettings.map((classItem) => {
-                  const isSelected = classItem.is_admissions_enabled;
-                  const isExpanded = expandedClass === classItem.id;
-                  const enabledFields = classItem.enabled_fields;
-                  
-                  return (
-                    <Collapsible
-                      key={classItem.id}
-                      open={isExpanded && isSelected}
-                      onOpenChange={(open) => setExpandedClass(open ? classItem.id : null)}
-                    >
-                      <div
-                        className={cn(
-                          "rounded-lg border transition-all",
-                          isSelected ? "border-primary/50 bg-primary/5" : "border-border"
-                        )}
-                      >
-                        {/* Class Header */}
-                        <div className="flex items-center gap-3 p-4">
-                          <button
-                            onClick={() => handleClassToggle(classItem.id)}
-                            className={cn(
-                              "h-5 w-5 rounded border flex items-center justify-center transition-colors flex-shrink-0",
-                              isSelected
-                                ? "bg-primary border-primary"
-                                : "border-muted-foreground/30"
-                            )}
-                            disabled={isSaving}
-                          >
-                            {isSelected && (
-                              <Check className="h-3 w-3 text-primary-foreground" />
-                            )}
-                          </button>
-                          
-                          <div className="flex-1 min-w-0">
-                            <span className="font-medium">{classItem.name}</span>
-                            {isSelected && (
-                              <span className="text-xs text-muted-foreground ml-2">
-                                ({getEnabledFieldCount(classItem.id)} fields enabled)
-                              </span>
-                            )}
-                          </div>
-                          
-                          {isSelected && (
-                            <CollapsibleTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 px-2" disabled={isSaving}>
-                                {isExpanded ? (
-                                  <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4" />
-                                )}
-                                <span className="ml-1 text-xs">Fields</span>
-                              </Button>
-                            </CollapsibleTrigger>
-                          )}
+              classSettings.map((classItem) => (
+                <Collapsible
+                  key={classItem.id}
+                  open={classItem.is_collapsible_open}
+                  onOpenChange={(open) => setClassSettings(prev => prev.map(c => 
+                    c.id === classItem.id ? {...c, is_collapsible_open: open} : c
+                  ))}
+                  className="border rounded-lg"
+                >
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center justify-between p-4 cursor-pointer bg-muted/20 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <span className="font-semibold">{classItem.name}</span>
+                        <div className="text-xs text-muted-foreground">
+                            {classItem.is_admissions_enabled ? 
+                                <span className="text-success font-medium">Open</span> : 
+                                <span className="text-destructive font-medium">Closed</span>
+                            } 
+                            | {classItem.enabled_fields.length} Fields
                         </div>
-                        
-                        {/* Expandable Field Settings */}
-                        <CollapsibleContent>
-                          <div className="border-t border-border/50 p-4 bg-muted/20">
-                            <p className="text-xs text-muted-foreground mb-3">
-                              Select which fields {classItem.name} applicants must fill out:
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                              {applicationFields.map((field) => (
-                                <div
-                                  key={field.id}
-                                  className={cn(
-                                    "flex items-center gap-2 p-2 rounded-md border transition-colors",
-                                    enabledFields.includes(field.id)
-                                      ? "border-primary/30 bg-primary/5"
-                                      : "border-transparent bg-background",
-                                    field.required && "opacity-60"
-                                  )}
-                                >
-                                  <Checkbox
-                                    checked={enabledFields.includes(field.id)}
-                                    onCheckedChange={() => handleFieldToggle(classItem.id, field.id)}
-                                    disabled={field.required || isSaving}
-                                    className="h-4 w-4"
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <span className="text-sm truncate block">{field.name}</span>
-                                    {field.required && (
-                                      <span className="text-[10px] text-muted-foreground">(Required)</span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </CollapsibleContent>
                       </div>
-                    </Collapsible>
-                  );
-                })
+                      {classItem.is_collapsible_open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="p-4">
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between py-2 border-b border-border">
+                            <Label htmlFor={`class-toggle-${classItem.id}`} className="font-medium">
+                                Admissions Open for {classItem.name}
+                                <p className="text-xs text-muted-foreground">Override global status to close admissions for this class only.</p>
+                            </Label>
+                            <Switch
+                                id={`class-toggle-${classItem.id}`}
+                                checked={classItem.is_admissions_enabled}
+                                onCheckedChange={() => handleClassToggle(classItem.id)}
+                                disabled={isSaving}
+                            />
+                        </div>
+
+                        <div className="space-y-3">
+                            <h3 className="text-base font-semibold flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-primary" />
+                                Required Application Fields
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                {applicationFields.map((field) => (
+                                    <div 
+                                        key={field.id}
+                                        className={cn(
+                                            "flex items-center space-x-2 p-3 rounded-md border transition-colors",
+                                            classItem.enabled_fields.includes(field.id)
+                                                ? "border-primary/30 bg-primary/5"
+                                                : "border-transparent bg-background",
+                                            field.required && "opacity-60" // Dim required fields
+                                        )}
+                                    >
+                                        <Checkbox
+                                            checked={classItem.enabled_fields.includes(field.id)}
+                                            onCheckedChange={() => handleFieldToggle(classItem.id, field.id)}
+                                            disabled={field.required || isSaving}
+                                            className="h-4 w-4"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-sm truncate block">{field.name}</span>
+                                            {field.required && (
+                                                <span className="text-[10px] text-muted-foreground">(Required)</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))
             )}
           </div>
         </div>

@@ -6,8 +6,8 @@ import { Eye, EyeOff, Loader2, GraduationCap, Users, FileCheck, TrendingUp } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast"; // <-- NOW AVAILABLE
-import { supabase } from "@/lib/supabase"; // <-- NOW AVAILABLE
+import { useToast } from "@/hooks/use-toast"; 
+import { supabase } from "@/lib/supabaseClient"; // ✅ FINAL FIX: Corrected import path
 import apscoLogo from "@/assets/apsco-logo.png";
 import googleIcon from "@/assets/google-icon.png";
 
@@ -100,7 +100,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Hero Visual */}
+      {/* Left Side - Hero Visual (BLUE PART RESTORED) */}
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         {/* Background, Floating Shapes, and Content (omitted for brevity) */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />

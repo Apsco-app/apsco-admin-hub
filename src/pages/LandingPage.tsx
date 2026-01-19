@@ -48,19 +48,9 @@ const LandingPage = () => {
       description: "Apply to multiple schools without physical travel.",
     },
     {
-      icon: CreditCard,
-      title: "Digital School Fee Payments",
-      description: "Pay securely using Mobile Money or card.",
-    },
-    {
       icon: Eye,
       title: "Application Status Tracking",
       description: "See acceptance or rejection in real time.",
-    },
-    {
-      icon: Receipt,
-      title: "Instant PDF Receipts",
-      description: "Download official digital receipts anytime.",
     },
     {
       icon: Building2,
@@ -107,7 +97,7 @@ const LandingPage = () => {
     {
       number: "4",
       title: "Track & Download",
-      description: "Track status & download receipts",
+      description: "Track status",
     },
   ];
 

@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
-import DashboardLayout from "./components/DashboardLayout";
+// DashboardLayout lives in src/components; use a correct relative path
+import DashboardLayout from "@/components/DashboardLayout";
 import Dashboard from "./pages/dashboard/Dashboard";
 import CreateSchool from "./pages/dashboard/CreateSchool";
 import Applicants from "./pages/dashboard/Applicants";
@@ -14,51 +15,52 @@ import Classes from "./pages/dashboard/Classes";
 import AdmissionsSettings from "./pages/dashboard/AdmissionsSettings";
 import Analytics from "./pages/dashboard/Analytics";
 import Payments from "./pages/dashboard/Payments";
-
 import Settings from "./pages/dashboard/Settings";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
 
+
 const queryClient = new QueryClient();
 
 const App = () => (
+  // 🚨 CRITICAL FIX: AuthProvider MUST be the outermost functional context
+  // This ensures the useAuth hook works everywhere.
   <AuthProvider>
-   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Landing Page */}
-          <Route path="/" element={<LandingPage />} />
-          
-          {/* Auth Routes */}
-          <Route path="/auth/login" element={<Login />} />
-          <Route path="/auth/register" element={<Register />} />
-          
-          {/* Dashboard Routes */}
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="create-school" element={<CreateSchool />} />
-            <Route path="applicants" element={<Applicants />} />
-            <Route path="applicants/:id" element={<ApplicantDetail />} />
-            <Route path="classes" element={<Classes />} />
-            <Route path="admissions-settings" element={<AdmissionsSettings />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="payments" element={<Payments />} />
-
-            <Route path="settings" element={<Settings />} />
-          </Route>
-          
-          {/* 404 */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+    {/* All other contexts and providers that may be required by AuthProvider's children */}
+    <QueryClientProvider client={queryClient}> 
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Landing Page */}
+            <Route path="/" element={<LandingPage />} />
+            
+            {/* Auth Routes */}
+            <Route path="/auth/login" element={<Login />} />
+            <Route path="/auth/register" element={<Register />} />
+            
+            {/* Dashboard Routes */}
+            <Route path="/dashboard" element={<DashboardLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="create-school" element={<CreateSchool />} />
+              <Route path="applicants" element={<Applicants />} />
+              <Route path="applicants/:id" element={<ApplicantDetail />} />
+              <Route path="classes" element={<Classes />} />
+              <Route path="admissions-settings" element={<AdmissionsSettings />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="payments" element={<Payments />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+            
+            {/* 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   </AuthProvider>
-
 );
 
 export default App;

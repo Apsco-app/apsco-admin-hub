@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx
+// src/context/AuthContext.tsx (FIXED: Removed UI logic to prevent crash)
 
 import React, { 
     createContext, 
@@ -7,10 +7,9 @@ import React, {
     useEffect, 
     ReactNode 
 } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { Session, User } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast'; // Assuming useToast is set up
 
 // --- Types ---
 interface AuthContextType {
@@ -25,13 +24,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // --- Provider Component ---
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const { toast } = useToast();
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
-    const [isLoading, setIsLoading] = useState(true); // Initial loading state
+    const [isLoading, setIsLoading] = useState(true); 
 
     useEffect(() => {
-        // 1. Initial Session Check (runs once on mount)
+        // 1. Initial Session Check
         const getInitialSession = async () => {
             const { data: { session }, error } = await supabase.auth.getSession();
             
@@ -46,20 +44,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         getInitialSession();
 
-        // 2. Listener for Auth State Changes (runs whenever login/logout occurs)
+        // 2. Listener for Auth State Changes
         const { data: listener } = supabase.auth.onAuthStateChange(
             (event, newSession) => {
                 setSession(newSession);
                 setUser(newSession?.user ?? null);
-                setIsLoading(false); // Authentication state is now known
-                
-                // Optional: Notify user on specific events
-                if (event === 'SIGNED_IN') {
-                    toast({
-                        title: "Signed In",
-                        description: "Welcome to your admissions dashboard!",
-                    });
-                }
+                setIsLoading(false); 
             }
         );
 
@@ -67,27 +57,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return () => {
             listener?.subscription.unsubscribe();
         };
-    }, [toast]);
+    }, []); // Dependency array is now empty
 
     const signOut = async () => {
         setIsLoading(true);
         const { error } = await supabase.auth.signOut();
-        setIsLoading(false);
         
         if (error) {
-            toast({
-                title: "Logout Failed",
-                description: error.message,
-                variant: "destructive",
-            });
-            return;
+            setIsLoading(false); // Only stop loading on error
+            console.error("Logout Failed:", error);
+            throw error; // Throw error for the calling component to catch
         }
         
-        // No need to manually clear user/session state, the listener handles it.
-        toast({
-            title: "Signed Out",
-            description: "You have been successfully signed out.",
-        });
+        // On success, redirect to clear all state. isLoading is not set to false.
+        window.location.href = '/auth/login'; 
     };
 
     // Show a global loading indicator while the initial session is being fetched
