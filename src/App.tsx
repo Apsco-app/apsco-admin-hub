@@ -16,7 +16,7 @@ import AdmissionsSettings from "./pages/dashboard/AdmissionsSettings";
 import Analytics from "./pages/dashboard/Analytics";
 import Payments from "./pages/dashboard/Payments";
 import Settings from "./pages/dashboard/Settings";
-import LandingPage from "./pages/LandingPage";
+import HomePage from "./pages/HomePage";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
 
@@ -34,8 +34,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Landing Page */}
-            <Route path="/" element={<LandingPage />} />
+            {/* Home Page */}
+            <Route path="/" element={<HomePage />} />
             
             {/* Auth Routes */}
             <Route path="/auth/login" element={<Login />} />

@@ -28,8 +28,9 @@ import {
   Building2,
 } from "lucide-react";
 import apscoIcon from "@/assets/apsco-icon.png";
+import { Helmet } from "react-helmet-async";
 
-const LandingPage = () => {
+const HomePage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
@@ -147,13 +148,42 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+  <title>APSCO — Apply to Schools Online in Uganda</title>
+
+  <meta
+    name="description"
+    content="APSCO lets parents and students apply to verified schools across Uganda, pay application fees securely, and track results online."
+  />
+
+  <link rel="canonical" href="https://apsco.site/" />
+
+  {/* Open Graph */}
+  <meta property="og:title" content="APSCO — Apply to Schools Online in Uganda" />
+  <meta
+    property="og:description"
+    content="Apply to multiple Ugandan schools online. Secure payments, real-time tracking, zero travel."
+  />
+  <meta property="og:url" content="https://apsco.site/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://apsco.site/og-image.png" />
+
+  {/* Twitter */}
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="APSCO — Apply to Schools Online in Uganda" />
+  <meta
+    name="twitter:description"
+    content="Apply to multiple Ugandan schools online. Secure payments, real-time tracking."
+  />
+</Helmet>
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-20">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
-              <img src={apscoIcon} alt="APSCO" className="h-10 w-10" />
+              <img src={apscoIcon} alt="APSCO school application platform logo" className="h-10 w-10" />
               <span className="text-xl font-bold text-foreground">APSCO</span>
             </Link>
 
@@ -227,8 +257,8 @@ const LandingPage = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="text-center lg:text-left">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight mb-6">
-                Apply to Schools—{" "}
-                <span className="text-primary">Anytime, Anywhere</span>
+                 Apply to Schools Online in Uganda —{" "}
+                 <span className="text-primary">Anytime, Anywhere</span>
               </h1>
               <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0">
                 APSCO digitalizes school applications in Uganda, saving families time, money, and stress.
@@ -691,4 +721,4 @@ const LandingPage = () => {
   );
 };
 
-export default LandingPage;
+export default HomePage;
