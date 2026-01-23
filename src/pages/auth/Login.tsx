@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient"; // ✅ FINAL FIX: Corrected import path
 import apscoLogo from "@/assets/apsco-logo.png";
 import googleIcon from "@/assets/google-icon.png";
+import { Helmet } from "react-helmet-async";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -101,13 +102,18 @@ const Login = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Hero Visual (BLUE PART RESTORED) */}
+              <Helmet>
+  <title>Login | APSCO</title>
+  <meta name="robots" content="noindex, nofollow" />
+</Helmet>
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         {/* Background, Floating Shapes, and Content (omitted for brevity) */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
         <div className="absolute inset-0 opacity-10" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }} />
-        
+
+
         <div className="relative z-10 flex flex-col justify-center p-12 xl:p-20">
           <div className="max-w-lg">
             <div className="flex items-center gap-4 mb-12">

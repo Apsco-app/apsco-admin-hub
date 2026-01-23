@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast"; // <-- NOW AVAILABLE
 import { supabase } from "@/lib/supabase"; // <-- NOW AVAILABLE
 import apscoLogo from "@/assets/apsco-logo.png";
 import googleIcon from "@/assets/google-icon.png";
+import { Helmet } from "react-helmet-async";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -140,6 +141,11 @@ const Register = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Hero Visual (omitted for brevity) */}
+      <Helmet>
+  <title>Register School | APSCO</title>
+  <meta name="robots" content="noindex, nofollow" />
+</Helmet>
+    
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
         <div className="absolute inset-0 opacity-10" style={{
