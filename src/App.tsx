@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 // DashboardLayout lives in src/components; use a correct relative path
@@ -19,7 +20,7 @@ import Settings from "./pages/dashboard/Settings";
 import PendingVerification from "./pages/dashboard/PendingVerification";
 import HomePage from "./pages/HomePage";
 import NotFound from "./pages/NotFound";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AuthStateListener />
           <Routes>
             {/* Home Page */}
             <Route path="/" element={<HomePage />} />
@@ -64,5 +66,23 @@ const App = () => (
     </QueryClientProvider>
   </AuthProvider>
 );
+
+function AuthStateListener() {
+  const { session } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // If we have a session, and we're at the root or login page, redirect to dashboard
+    if (session) {
+      const path = location.pathname;
+      if (path === '/' || path === '/auth/login' || path === '/auth/register') {
+        navigate('/dashboard');
+      }
+    }
+  }, [session, navigate, location]);
+
+  return null;
+}
 
 export default App;

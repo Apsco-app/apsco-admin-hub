@@ -10,6 +10,7 @@ import { useSchoolData } from '@/hooks/useSchoolData';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import apscoLogo from '@/assets/apsco-logo.png';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabaseClient';
 
 const DashboardLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -58,6 +59,16 @@ const DashboardLayout = () => {
             navigate('/dashboard/create-school', { replace: true });
         }
     }, [isSchoolLoading, schoolId, location.pathname, navigate]);
+
+    // Protect the dashboard: Redirect to home if no session
+    useEffect(() => {
+        // Check session directly to ensure security on initial load/refresh
+        supabase.auth.getSession().then(({ data }) => {
+            if (!data.session) {
+                navigate('/');
+            }
+        });
+    }, [navigate]);
 
     const navItems = [
         { name: 'Dashboard', path: '/dashboard', icon: Home, requiredStatus: null },
