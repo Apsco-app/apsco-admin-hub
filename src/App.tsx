@@ -77,10 +77,12 @@ function AuthStateListener() {
   const location = useLocation();
 
   useEffect(() => {
+    console.log("AuthStateListener: session present?", !!session, "path:", location.pathname);
     // If we have a session, and we're at the root or login page, redirect to dashboard
     if (session) {
       const path = location.pathname;
       if (path === '/' || path === '/auth/login' || path === '/auth/register') {
+        console.log("AuthStateListener: Authenticated user on landing page. Redirecting to /dashboard...");
         navigate('/dashboard');
       }
     }

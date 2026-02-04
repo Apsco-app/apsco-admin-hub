@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabaseClient"; // ✅ FINAL FIX: Corrected import path
+import { supabase } from "@/lib/supabase"; // ✅ FINAL FIX: Corrected import path
 import apscoLogo from "@/assets/apsco-logo.png";
 import googleIcon from "@/assets/google-icon.png";
 import { Helmet } from "react-helmet-async";

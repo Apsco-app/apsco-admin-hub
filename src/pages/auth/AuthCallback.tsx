@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -11,48 +11,59 @@ const AuthCallback = () => {
 
     useEffect(() => {
         const handleAuthCallback = async () => {
+            console.log("AuthCallback: Component mounted. Hash:", window.location.hash, "Search:", window.location.search);
+
             // Check for error parameters in the URL
             const params = new URLSearchParams(window.location.search);
             const errorDescription = params.get('error_description');
 
             if (errorDescription) {
+                console.error("AuthCallback: OAuth error detected:", errorDescription);
                 setError(errorDescription);
                 setTimeout(() => navigate('/auth/login'), 3000);
                 return;
             }
 
             // Verify session availability 
+            console.log("AuthCallback: Calling getSession...");
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
             if (sessionError) {
-                console.error("Auth Callback Error:", sessionError);
+                console.error("AuthCallback: getSession error:", sessionError);
                 setError(sessionError.message);
                 setTimeout(() => navigate('/auth/login'), 3000);
                 return;
             }
 
+            console.log("AuthCallback: getSession session exists?", !!session);
+
             if (session) {
                 // Successful login
-                console.log("AuthCallback: Session found, redirecting to dashboard");
+                console.log("AuthCallback: Session FOUND, redirecting to dashboard");
                 navigate('/dashboard', { replace: true });
             } else {
+                console.log("AuthCallback: No session in getSession. Setting up onAuthStateChange listener.");
                 // Wait a moment for the session to be established by the Supabase client
-                // (It processes the hash fragment automatically)
                 const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-                    if (event === 'SIGNED_IN' && session) {
+                    console.log("AuthCallback: onAuthStateChange event received:", event, "session?", !!session);
+                    if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
+                        console.log("AuthCallback: Handshake complete, redirecting to dashboard");
                         navigate('/dashboard', { replace: true });
                     }
                 });
 
-                // Safety timeout - if no session after 5 seconds, back to login
+                // Safety timeout - if no session after 10 seconds, back to login
                 setTimeout(() => {
-                    if (!error) { // Don't overwrite existing error
-                        console.warn("AuthCallback: Timeout waiting for session");
+                    if (!error) {
+                        console.warn("AuthCallback: Timeout waiting for session. Redirecting to login.");
                         navigate('/auth/login');
                     }
-                }, 5000);
+                }, 10000);
 
-                return () => subscription.unsubscribe();
+                return () => {
+                    console.log("AuthCallback: Cleaning up onAuthStateChange listener");
+                    subscription.unsubscribe();
+                };
             }
         };
 

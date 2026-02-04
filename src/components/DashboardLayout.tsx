@@ -10,7 +10,7 @@ import { useSchoolData } from '@/hooks/useSchoolData';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import apscoLogo from '@/assets/apsco-logo.png';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 const DashboardLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);

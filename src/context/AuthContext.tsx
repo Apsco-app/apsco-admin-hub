@@ -7,7 +7,7 @@ import React, {
     useEffect,
     ReactNode
 } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
 
@@ -31,41 +31,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         // 1. Initial Session Check
         const getInitialSession = async () => {
-            const { data: { session }, error } = await supabase.auth.getSession();
+            console.log("AuthContext: Starting getInitialSession. Current URL:", window.location.href);
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
 
-            if (error) {
-                console.error("Error getting initial session:", error);
-            }
+                if (error) {
+                    console.error("AuthContext: getSession error:", error);
+                }
 
-            if (session) {
-                setSession(session);
-                setUser(session.user);
+                console.log("AuthContext: Initial session fetch result:", session ? "FOUND" : "NOT FOUND");
+
+                if (session) {
+                    setSession(session);
+                    setUser(session.user);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // If no session found yet, but we are in an OAuth redirect flow, 
+                // wait for onAuthStateChange to handle the session.
+                const isRedirect = window.location.hash.includes('access_token') ||
+                    window.location.search.includes('code=');
+
+                console.log("AuthContext: isRedirect check:", isRedirect);
+
+                if (isRedirect) {
+                    console.log("AuthContext: OAuth redirect detected. Keeping isLoading=true to wait for handshake.");
+                    // Set a safety timeout in case auth fails silently
+                    setTimeout(() => {
+                        console.log("AuthContext: Safety timeout hit. Forcing isLoading to false.");
+                        setIsLoading(false);
+                    }, 10000);
+                    return;
+                }
+
+                setSession(null);
+                setUser(null);
                 setIsLoading(false);
-                return;
+            } catch (err) {
+                console.error("AuthContext: Unexpected error in getInitialSession:", err);
+                setIsLoading(false);
             }
-
-            // If no session found yet, but we are in an OAuth redirect flow, 
-            // wait for onAuthStateChange to handle the session.
-            const isRedirect = window.location.hash.includes('access_token') ||
-                window.location.search.includes('code=');
-
-            if (isRedirect) {
-                console.log("AuthContext: Redirect detected, waiting for session...");
-                // Set a safety timeout in case auth fails silently
-                setTimeout(() => setIsLoading(false), 5000);
-                return;
-            }
-
-            setSession(null);
-            setUser(null);
-            setIsLoading(false);
         };
 
         getInitialSession();
 
         // 2. Listener for Auth State Changes
+        console.log("AuthContext: Setting up onAuthStateChange listener.");
         const { data: listener } = supabase.auth.onAuthStateChange(
             (event, newSession) => {
+                console.log("AuthContext: onAuthStateChange fired!", { event, sessionActive: !!newSession });
                 setSession(newSession);
                 setUser(newSession?.user ?? null);
                 setIsLoading(false);
@@ -74,6 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         // Cleanup the listener on unmount
         return () => {
+            console.log("AuthContext: Unmounting, cleaning up listener.");
             listener?.subscription.unsubscribe();
         };
     }, []); // Dependency array is now empty
