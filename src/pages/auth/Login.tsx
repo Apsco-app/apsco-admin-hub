@@ -6,7 +6,7 @@ import { Eye, EyeOff, Loader2, GraduationCap, Users, FileCheck, TrendingUp } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast"; 
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient"; // ✅ FINAL FIX: Corrected import path
 import apscoLogo from "@/assets/apsco-logo.png";
 import googleIcon from "@/assets/google-icon.png";
@@ -23,48 +23,48 @@ const Login = () => {
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
-    
+
     if (!email) {
       newErrors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = "Please enter a valid email";
     }
-    
+
     if (!password) {
       newErrors.password = "Password is required";
     } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters"; 
+      newErrors.password = "Password must be at least 6 characters";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsLoading(true);
-    setErrors({}); 
+    setErrors({});
 
     // Supabase Email/Password Sign In
     const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      email,
+      password,
     });
-    
+
     setIsLoading(false);
 
     if (error) {
-        toast({
-            title: "Login Failed",
-            description: error.message || "Invalid credentials or network error.",
-            variant: "destructive",
-        });
-        return; 
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid credentials or network error.",
+        variant: "destructive",
+      });
+      return;
     }
-    
+
     // Successful login - AuthContext listener handles the session change
     navigate("/dashboard");
   };
@@ -74,20 +74,20 @@ const Login = () => {
 
     // Supabase Google OAuth Sign In
     const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            redirectTo: `${window.location.origin}/dashboard`,
-        },
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
 
     // Since this is a redirect, we only handle the error before the redirect
     if (error) {
-        setIsLoading(false);
-        toast({
-            title: "Google Sign-In Failed",
-            description: error.message || "Could not start Google sign-in process.",
-            variant: "destructive",
-        });
+      setIsLoading(false);
+      toast({
+        title: "Google Sign-In Failed",
+        description: error.message || "Could not start Google sign-in process.",
+        variant: "destructive",
+      });
     }
     // If no error, browser redirects to Google, then back to /dashboard
   };
@@ -102,10 +102,10 @@ const Login = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Hero Visual (BLUE PART RESTORED) */}
-              <Helmet>
-  <title>Login | APSCO</title>
-  <meta name="robots" content="noindex, nofollow" />
-</Helmet>
+      <Helmet>
+        <title>Login | APSCO</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         {/* Background, Floating Shapes, and Content (omitted for brevity) */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
@@ -122,15 +122,15 @@ const Login = () => {
               </div>
               <span className="text-3xl font-bold text-white tracking-tight">APSCO</span>
             </div>
-            
+
             <h1 className="text-4xl xl:text-5xl font-bold text-white mb-6 leading-tight">
-              School Admissions <br/><span className="text-white/80">Made Simple</span>
+              School Admissions <br /><span className="text-white/80">Made Simple</span>
             </h1>
-            
+
             <p className="text-lg text-white/70 mb-12 leading-relaxed">
               Streamline your enrollment process with AI-powered document verification and real-time applicant tracking.
             </p>
-            
+
             <div className="flex flex-wrap gap-3">
               {features.map((feature, index) => (
                 <div key={index} className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
@@ -139,7 +139,7 @@ const Login = () => {
                 </div>
               ))}
             </div>
-            
+
             <div className="mt-16 grid grid-cols-3 gap-8">
               <div><div className="text-3xl font-bold text-white">500+</div><div className="text-sm text-white/60">Schools</div></div>
               <div><div className="text-3xl font-bold text-white">50K+</div><div className="text-sm text-white/60">Applications</div></div>

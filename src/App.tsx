@@ -21,6 +21,7 @@ import PendingVerification from "./pages/dashboard/PendingVerification";
 import HomePage from "./pages/HomePage";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import AuthCallback from "./pages/auth/AuthCallback";
 
 
 const queryClient = new QueryClient();
@@ -40,9 +41,12 @@ const App = () => (
             {/* Home Page */}
             <Route path="/" element={<HomePage />} />
 
+
+
             {/* Auth Routes */}
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/register" element={<Register />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* Dashboard Routes */}
             <Route path="/dashboard" element={<DashboardLayout />}>
