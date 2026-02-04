@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-ro
 import { useEffect } from "react";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import AuthCallback from "./pages/auth/AuthCallback";
 // DashboardLayout lives in src/components; use a correct relative path
 import DashboardLayout from "@/components/DashboardLayout";
 import Dashboard from "./pages/dashboard/Dashboard";
@@ -21,7 +22,6 @@ import PendingVerification from "./pages/dashboard/PendingVerification";
 import HomePage from "./pages/HomePage";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import AuthCallback from "./pages/auth/AuthCallback";
 
 
 const queryClient = new QueryClient();
@@ -40,8 +40,6 @@ const App = () => (
           <Routes>
             {/* Home Page */}
             <Route path="/" element={<HomePage />} />
-
-
 
             {/* Auth Routes */}
             <Route path="/auth/login" element={<Login />} />
@@ -77,12 +75,10 @@ function AuthStateListener() {
   const location = useLocation();
 
   useEffect(() => {
-    console.log("AuthStateListener: session present?", !!session, "path:", location.pathname);
     // If we have a session, and we're at the root or login page, redirect to dashboard
     if (session) {
       const path = location.pathname;
       if (path === '/' || path === '/auth/login' || path === '/auth/register') {
-        console.log("AuthStateListener: Authenticated user on landing page. Redirecting to /dashboard...");
         navigate('/dashboard');
       }
     }

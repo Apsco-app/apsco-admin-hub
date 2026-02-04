@@ -1,90 +1,63 @@
+// src/pages/auth/AuthCallback.tsx
+// This page handles the OAuth callback flow.
+// It waits for the session to be established, then redirects to the dashboard.
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 const AuthCallback = () => {
+    const { session, isLoading } = useAuth();
     const navigate = useNavigate();
-    const { toast } = useToast();
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const handleAuthCallback = async () => {
-            console.log("AuthCallback: Component mounted. Hash:", window.location.hash, "Search:", window.location.search);
+        // If we have a session, redirect to dashboard
+        if (session) {
+            navigate('/dashboard', { replace: true });
+            return;
+        }
 
-            // Check for error parameters in the URL
-            const params = new URLSearchParams(window.location.search);
-            const errorDescription = params.get('error_description');
+        // If loading is finished and we still don't have a session, something went wrong
+        if (!isLoading && !session) {
+            // Check for error in URL hash (Supabase Auth error format)
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const errorDesc = hashParams.get('error_description');
 
-            if (errorDescription) {
-                console.error("AuthCallback: OAuth error detected:", errorDescription);
-                setError(errorDescription);
-                setTimeout(() => navigate('/auth/login'), 3000);
-                return;
-            }
-
-            // Verify session availability 
-            console.log("AuthCallback: Calling getSession...");
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-            if (sessionError) {
-                console.error("AuthCallback: getSession error:", sessionError);
-                setError(sessionError.message);
-                setTimeout(() => navigate('/auth/login'), 3000);
-                return;
-            }
-
-            console.log("AuthCallback: getSession session exists?", !!session);
-
-            if (session) {
-                // Successful login
-                console.log("AuthCallback: Session FOUND, redirecting to dashboard");
-                navigate('/dashboard', { replace: true });
+            if (errorDesc) {
+                setError(decodeURIComponent(errorDesc));
             } else {
-                console.log("AuthCallback: No session in getSession. Setting up onAuthStateChange listener.");
-                // Wait a moment for the session to be established by the Supabase client
-                const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-                    console.log("AuthCallback: onAuthStateChange event received:", event, "session?", !!session);
-                    if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
-                        console.log("AuthCallback: Handshake complete, redirecting to dashboard");
-                        navigate('/dashboard', { replace: true });
-                    }
-                });
-
-                // Safety timeout - if no session after 10 seconds, back to login
-                setTimeout(() => {
-                    if (!error) {
-                        console.warn("AuthCallback: Timeout waiting for session. Redirecting to login.");
-                        navigate('/auth/login');
-                    }
-                }, 10000);
-
-                return () => {
-                    console.log("AuthCallback: Cleaning up onAuthStateChange listener");
-                    subscription.unsubscribe();
-                };
+                // Give it a moment, then redirect to login if no session
+                const timeout = setTimeout(() => {
+                    setError('Authentication timed out. Please try again.');
+                }, 5000);
+                return () => clearTimeout(timeout);
             }
-        };
-
-        handleAuthCallback();
-    }, [navigate]);
+        }
+    }, [session, isLoading, navigate]);
 
     if (error) {
         return (
-            <div className="flex flex-col min-h-screen items-center justify-center bg-background p-4 text-center">
-                <div className="text-red-500 text-xl font-semibold mb-2">Authentication Failed</div>
-                <p className="text-muted-foreground mb-4">{error}</p>
-                <p className="text-sm text-muted-foreground">Redirecting to login...</p>
+            <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold text-destructive mb-2">Authentication Failed</h1>
+                    <p className="text-muted-foreground mb-4">{error}</p>
+                    <button
+                        onClick={() => navigate('/auth/login')}
+                        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                    >
+                        Back to Login
+                    </button>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col min-h-screen items-center justify-center bg-background">
-            <Loader2 className="h-10 w-10 mb-4 animate-spin text-primary" />
-            <h2 className="text-xl font-semibold">Verifying authentication...</h2>
-            <p className="text-muted-foreground">Please wait while we log you in.</p>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <p className="text-lg text-muted-foreground">Verifying authentication...</p>
         </div>
     );
 };
