@@ -61,14 +61,13 @@ const DashboardLayout = () => {
     }, [isSchoolLoading, schoolId, location.pathname, navigate]);
 
     // Protect the dashboard: Redirect to home if no session
+    // We rely on useAuth() to handle the loading state first (above).
+    // If we passed the loading check and still have no user, redirect.
     useEffect(() => {
-        // Check session directly to ensure security on initial load/refresh
-        supabase.auth.getSession().then(({ data }) => {
-            if (!data.session) {
-                navigate('/');
-            }
-        });
-    }, [navigate]);
+        if (!isAuthLoading && !user) {
+            navigate('/');
+        }
+    }, [isAuthLoading, user, navigate]);
 
     const navItems = [
         { name: 'Dashboard', path: '/dashboard', icon: Home, requiredStatus: null },

@@ -1,11 +1,11 @@
 // src/context/AuthContext.tsx (FIXED: Removed UI logic to prevent crash)
 
-import React, { 
-    createContext, 
-    useContext, 
-    useState, 
-    useEffect, 
-    ReactNode 
+import React, {
+    createContext,
+    useContext,
+    useState,
+    useEffect,
+    ReactNode
 } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Session, User } from '@supabase/supabase-js';
@@ -26,22 +26,41 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
-    const [isLoading, setIsLoading] = useState(true); 
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         // 1. Initial Session Check
         const getInitialSession = async () => {
             const { data: { session }, error } = await supabase.auth.getSession();
-            
+
             if (error) {
                 console.error("Error getting initial session:", error);
             }
-            
-            setSession(session);
-            setUser(session?.user ?? null);
+
+            if (session) {
+                setSession(session);
+                setUser(session.user);
+                setIsLoading(false);
+                return;
+            }
+
+            // If no session found yet, but we are in an OAuth redirect flow, 
+            // wait for onAuthStateChange to handle the session.
+            const isRedirect = window.location.hash.includes('access_token') ||
+                window.location.search.includes('code=');
+
+            if (isRedirect) {
+                console.log("AuthContext: Redirect detected, waiting for session...");
+                // Set a safety timeout in case auth fails silently
+                setTimeout(() => setIsLoading(false), 5000);
+                return;
+            }
+
+            setSession(null);
+            setUser(null);
             setIsLoading(false);
         };
-        
+
         getInitialSession();
 
         // 2. Listener for Auth State Changes
@@ -49,7 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             (event, newSession) => {
                 setSession(newSession);
                 setUser(newSession?.user ?? null);
-                setIsLoading(false); 
+                setIsLoading(false);
             }
         );
 
@@ -62,15 +81,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const signOut = async () => {
         setIsLoading(true);
         const { error } = await supabase.auth.signOut();
-        
+
         if (error) {
             setIsLoading(false); // Only stop loading on error
             console.error("Logout Failed:", error);
             throw error; // Throw error for the calling component to catch
         }
-        
+
         // On success, redirect to clear all state. isLoading is not set to false.
-        window.location.href = '/auth/login'; 
+        window.location.href = '/auth/login';
     };
 
     // Show a global loading indicator while the initial session is being fetched
