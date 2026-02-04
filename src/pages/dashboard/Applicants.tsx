@@ -67,8 +67,8 @@ interface Applicant {
 }
 
 interface ClassItem {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
 }
 
 const ROWS_PER_PAGE = 10;
@@ -77,7 +77,7 @@ const Applicants = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { schoolId, isLoading: schoolLoading } = useSchoolData();
-  
+
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -101,7 +101,7 @@ const Applicants = () => {
     action: "accept",
     applicant: null,
   });
-  
+
   const [columnVisibility, setColumnVisibility] = useState<Record<keyof Applicant | 'actions', boolean>>({
     full_name: true,
     class_name: true,
@@ -117,10 +117,10 @@ const Applicants = () => {
 
   const fetchApplicants = useCallback(async () => {
     if (!schoolId) {
-        setIsLoading(false);
-        return;
+      setIsLoading(false);
+      return;
     }
-    
+
     setIsLoading(true);
     const from = page * ROWS_PER_PAGE;
     const to = from + ROWS_PER_PAGE - 1;
@@ -138,20 +138,20 @@ const Applicants = () => {
       .eq('school_id', schoolId)
       .order(sortColumn, { ascending: sortDirection === 'asc' })
       .range(from, to);
-      
+
     // Apply filters
     if (statusFilter !== "all") {
-        query = query.eq('status', statusFilter);
+      query = query.eq('status', statusFilter);
     }
 
     if (classFilter !== "all") {
-        // Need to filter on the joined column (class_id)
-        query = query.eq('class_id', classFilter);
+      // Need to filter on the joined column (class_id)
+      query = query.eq('class_id', classFilter);
     }
 
     if (searchQuery.trim()) {
-        // Simple search on full_name
-        query = query.ilike('full_name', `%${searchQuery.trim()}%`);
+      // Simple search on full_name
+      query = query.ilike('full_name', `%${searchQuery.trim()}%`);
     }
 
     const { data, error, count } = await query;
@@ -162,17 +162,17 @@ const Applicants = () => {
       setApplicants([]);
       setTotalCount(0);
     } else {
-        const formattedApplicants: Applicant[] = data.map((a: any) => ({
-            id: a.id,
-            full_name: a.full_name,
-            application_date: a.application_date,
-            status: a.status as ApplicantStatus,
-            aggregates: a.aggregates?.ple_aggregate || a.aggregates?.o_level_points || null,
-            class_name: a.classes?.name || 'N/A',
-        }));
-        
-        setApplicants(formattedApplicants);
-        setTotalCount(count || 0);
+      const formattedApplicants: Applicant[] = data.map((a: any) => ({
+        id: a.id,
+        full_name: a.full_name,
+        application_date: a.application_date,
+        status: a.status as ApplicantStatus,
+        aggregates: a.aggregates?.pleAggregates || a.aggregates?.ple_aggregate || a.aggregates?.o_level_points || null,
+        class_name: a.classes?.name || 'N/A',
+      }));
+
+      setApplicants(formattedApplicants);
+      setTotalCount(count || 0);
     }
 
     setIsLoading(false);
@@ -183,24 +183,24 @@ const Applicants = () => {
     if (!schoolId) return;
 
     const { data, error } = await supabase
-        .from('classes')
-        .select('id, name')
-        .eq('school_id', schoolId)
-        .order('name', { ascending: true });
+      .from('classes')
+      .select('id, name')
+      .eq('school_id', schoolId)
+      .order('name', { ascending: true });
 
     if (error) {
-        console.error("Error fetching classes:", error);
+      console.error("Error fetching classes:", error);
     } else {
-        setClasses(data as ClassItem[]);
+      setClasses(data as ClassItem[]);
     }
   }, [schoolId]);
 
   useEffect(() => {
     if (schoolId) {
-        fetchClasses();
+      fetchClasses();
     }
   }, [schoolId, fetchClasses]);
-  
+
   useEffect(() => {
     fetchApplicants();
   }, [fetchApplicants]);
@@ -231,12 +231,12 @@ const Applicants = () => {
 
     // Success: Refresh data to show updated status
     toast({
-        title: "Status Updated",
-        description: `Applicant status changed to ${newStatus}.`,
+      title: "Status Updated",
+      description: `Applicant status changed to ${newStatus}.`,
     });
-    fetchApplicants(); 
+    fetchApplicants();
   };
-  
+
   const handleSort = (column: keyof Applicant) => {
     if (column === sortColumn) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -245,15 +245,15 @@ const Applicants = () => {
       setSortDirection('desc');
     }
   };
-  
+
   const handleExport = () => {
-      // In a real application, this would trigger a backend process
-      toast({
-          title: "Export Initiated",
-          description: "A CSV export of all applicants is being generated and will be downloaded shortly.",
-      });
-      // Mock delay
-      setTimeout(() => console.log("Simulating CSV download..."), 1000);
+    // In a real application, this would trigger a backend process
+    toast({
+      title: "Export Initiated",
+      description: "A CSV export of all applicants is being generated and will be downloaded shortly.",
+    });
+    // Mock delay
+    setTimeout(() => console.log("Simulating CSV download..."), 1000);
   };
 
 
@@ -272,7 +272,7 @@ const Applicants = () => {
     }
     return null;
   };
-  
+
   const columns: { key: keyof Applicant | 'actions', label: string, sortable: boolean }[] = [
     { key: "full_name", label: "Applicant Name", sortable: true },
     { key: "class_name", label: "Class", sortable: false }, // Class name is complex to sort via Supabase join without an RPC
@@ -284,15 +284,15 @@ const Applicants = () => {
 
   if (!schoolId) {
     return (
-        <div className="space-y-4 text-center p-8 border border-border rounded-lg mt-8">
-            <MinusCircle className="h-10 w-10 text-destructive mx-auto" />
-            <h2 className="text-xl font-semibold">School Profile Required</h2>
-            <p className="text-muted-foreground">Please create and verify your school profile to view applicants.</p>
-            <Button onClick={() => navigate('/create-school')} variant="default"> 
-                {/* FIX: Changed variant="primary" to variant="default" to resolve the type error */}
-                Setup School
-            </Button>
-        </div>
+      <div className="space-y-4 text-center p-8 border border-border rounded-lg mt-8">
+        <MinusCircle className="h-10 w-10 text-destructive mx-auto" />
+        <h2 className="text-xl font-semibold">School Profile Required</h2>
+        <p className="text-muted-foreground">Please create and verify your school profile to view applicants.</p>
+        <Button onClick={() => navigate('/create-school')} variant="default">
+          {/* FIX: Changed variant="primary" to variant="default" to resolve the type error */}
+          Setup School
+        </Button>
+      </div>
     );
   }
 
@@ -317,8 +317,8 @@ const Applicants = () => {
               className="pl-9"
               value={searchQuery}
               onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(0); // Reset to first page on search
+                setSearchQuery(e.target.value);
+                setPage(0); // Reset to first page on search
               }}
               disabled={isLoading}
             />
@@ -328,8 +328,8 @@ const Applicants = () => {
         <div className="flex w-full sm:w-auto space-x-2 justify-end">
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={(val) => {
-              setStatusFilter(val as ApplicantStatus | "all");
-              setPage(0); // Reset to first page
+            setStatusFilter(val as ApplicantStatus | "all");
+            setPage(0); // Reset to first page
           }} disabled={isLoading}>
             <SelectTrigger className="w-[150px]">
               <Filter className="h-4 w-4 mr-2" />
@@ -345,8 +345,8 @@ const Applicants = () => {
 
           {/* Class Filter */}
           <Select value={classFilter} onValueChange={(val) => {
-              setClassFilter(val);
-              setPage(0); // Reset to first page
+            setClassFilter(val);
+            setPage(0); // Reset to first page
           }} disabled={isLoading}>
             <SelectTrigger className="w-[150px]">
               <Settings2 className="h-4 w-4 mr-2" />
@@ -355,7 +355,7 @@ const Applicants = () => {
             <SelectContent>
               <SelectItem value="all">All Classes</SelectItem>
               {classes.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -391,24 +391,24 @@ const Applicants = () => {
           <TableHeader>
             <TableRow>
               {columns.filter(col => columnVisibility[col.key]).map((col) => (
-                <TableHead 
-                    key={col.key} 
-                    onClick={() => col.sortable && handleSort(col.key as keyof Applicant)}
-                    className={col.sortable ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+                <TableHead
+                  key={col.key}
+                  onClick={() => col.sortable && handleSort(col.key as keyof Applicant)}
+                  className={col.sortable ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
                 >
-                    {col.label}
-                    {renderSortIndicator(col.key as keyof Applicant)}
+                  {col.label}
+                  {renderSortIndicator(col.key as keyof Applicant)}
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-                <TableRow>
-                    <TableCell colSpan={columns.filter(col => columnVisibility[col.key]).length} className="h-24 text-center">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-                    </TableCell>
-                </TableRow>
+              <TableRow>
+                <TableCell colSpan={columns.filter(col => columnVisibility[col.key]).length} className="h-24 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                </TableCell>
+              </TableRow>
             ) : applicants.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.filter(col => columnVisibility[col.key]).length} className="h-24 text-center text-muted-foreground">
@@ -427,7 +427,7 @@ const Applicants = () => {
                         className={`px-3 py-1 text-xs font-medium rounded-full border 
                           ${applicant.status === "accepted" ? "text-success bg-success/10 border-success/30" :
                             applicant.status === "rejected" ? "text-destructive bg-destructive/10 border-destructive/30" :
-                            "text-warning bg-warning/10 border-warning/30"
+                              "text-warning bg-warning/10 border-warning/30"
                           }`
                         }
                       >
@@ -449,23 +449,23 @@ const Applicants = () => {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8" disabled={applicant.status === 'rejected'}>
-                                <Settings2 className="h-4 w-4" />
+                              <Settings2 className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem 
-                                className="text-success focus:text-success"
-                                disabled={applicant.status === 'accepted'}
-                                onClick={() => setConfirmDialog({ open: true, action: "accept", applicant })}
+                            <DropdownMenuItem
+                              className="text-success focus:text-success"
+                              disabled={applicant.status === 'accepted'}
+                              onClick={() => setConfirmDialog({ open: true, action: "accept", applicant })}
                             >
-                                <Check className="h-4 w-4 mr-2" /> Accept
+                              <Check className="h-4 w-4 mr-2" /> Accept
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive"
-                                disabled={applicant.status === 'rejected'}
-                                onClick={() => setConfirmDialog({ open: true, action: "reject", applicant })}
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              disabled={applicant.status === 'rejected'}
+                              onClick={() => setConfirmDialog({ open: true, action: "reject", applicant })}
                             >
-                                <X className="h-4 w-4 mr-2" /> Reject
+                              <X className="h-4 w-4 mr-2" /> Reject
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -512,7 +512,7 @@ const Applicants = () => {
               {confirmDialog.action === "accept" ? "Accept Application" : "Reject Application"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmDialog.action === "accept" 
+              {confirmDialog.action === "accept"
                 ? `Are you sure you want to accept ${confirmDialog.applicant?.full_name}'s application?`
                 : `Are you sure you want to reject ${confirmDialog.applicant?.full_name}'s application?`
               }
@@ -522,8 +522,8 @@ const Applicants = () => {
             <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => confirmDialog.applicant && handleStatusChange(
-                  confirmDialog.applicant.id, 
-                  confirmDialog.action === "accept" ? "accepted" : "rejected"
+                confirmDialog.applicant.id,
+                confirmDialog.action === "accept" ? "accepted" : "rejected"
               )}
               className={confirmDialog.action === "reject" ? "bg-destructive hover:bg-destructive/90" : ""}
               disabled={isLoading}

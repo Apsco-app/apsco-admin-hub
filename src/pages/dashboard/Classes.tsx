@@ -9,25 +9,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { useSchoolData } from "@/hooks/useSchoolData"; 
+import { useSchoolData } from "@/hooks/useSchoolData";
+import { useNavigate } from "react-router-dom";
+import { ToastAction } from "@/components/ui/toast";
 
 interface SchoolClass {
   id: string;
   name: string;
-  capacity: number;
 }
 
 const Classes = () => {
   const { toast } = useToast();
-  
-  const { schoolId, isLoading: schoolLoading } = useSchoolData() as any; 
-  
+  const navigate = useNavigate();
+
+  const { schoolId, isLoading: schoolLoading } = useSchoolData() as any;
+
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [newClassName, setNewClassName] = useState("");
-  const [newClassCapacity, setNewClassCapacity] = useState(30);
   const [isClassAdding, setIsClassAdding] = useState(false);
   const [isClassLoading, setIsClassLoading] = useState(true);
-  const [isClassDeleting, setIsClassDeleting] = useState<string | null>(null); // <--- FIX: Added state for specific delete loading
+  const [isClassDeleting, setIsClassDeleting] = useState<string | null>(null);
 
   // --- Data Fetching ---
   const fetchClasses = useCallback(async () => {
@@ -41,7 +42,7 @@ const Classes = () => {
     try {
       const { data, error } = await supabase
         .from('classes')
-        .select('id, name, capacity')
+        .select('id, name')
         .eq('school_id', schoolId)
         .order('name', { ascending: true });
 
@@ -67,15 +68,15 @@ const Classes = () => {
   // --- Add Class Handler ---
   const handleAddClass = async () => {
     const trimmedName = newClassName.trim();
-    if (!schoolId || trimmedName === "" || newClassCapacity < 1 || isClassAdding) return;
+    if (!schoolId || trimmedName === "" || isClassAdding) return;
 
     if (classes.some(c => c.name.toLowerCase() === trimmedName.toLowerCase())) {
-        toast({
-            title: "Validation Error",
-            description: `A class named "${trimmedName}" already exists.`,
-            variant: "destructive",
-        });
-        return;
+      toast({
+        title: "Validation Error",
+        description: `A class named "${trimmedName}" already exists.`,
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsClassAdding(true);
@@ -85,20 +86,23 @@ const Classes = () => {
         .from('classes')
         .insert({
           name: trimmedName,
-          capacity: newClassCapacity,
           school_id: schoolId,
         })
-        .select('id, name, capacity')
+        .select('id, name')
         .single();
 
       if (error) throw error;
 
       setClasses(prev => [...prev, data as SchoolClass]);
       setNewClassName("");
-      setNewClassCapacity(30);
       toast({
-        title: "Success",
-        description: `Class "${data.name}" added successfully.`,
+        title: "Class Added",
+        description: `Please configure admission settings for "${data.name}" immediately.`,
+        action: (
+          <ToastAction altText="Configure" onClick={() => navigate('/dashboard/admissions-settings')}>
+            Configure
+          </ToastAction>
+        ),
       });
 
     } catch (error: any) {
@@ -135,20 +139,20 @@ const Classes = () => {
       });
 
     } catch (error: any) {
-        console.error("Error deleting class:", error.message);
-        if (error.code === '23503') { // PostgreSQL Foreign Key Violation
-            toast({
-                title: "Deletion Failed",
-                description: "Cannot delete class as there are existing applicants linked to it.",
-                variant: "destructive",
-            });
-        } else {
-            toast({
-                title: "Deletion Failed",
-                description: error.message,
-                variant: "destructive",
-            });
-        }
+      console.error("Error deleting class:", error.message);
+      if (error.code === '23503') { // PostgreSQL Foreign Key Violation
+        toast({
+          title: "Deletion Failed",
+          description: "Cannot delete class as there are existing applicants linked to it.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Deletion Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsClassDeleting(null);
     }
@@ -165,15 +169,15 @@ const Classes = () => {
       </div>
     );
   }
-  
+
   if (!schoolId) {
-      return (
-          <div className="space-y-4 text-center p-10 border border-border rounded-lg mt-8 max-w-xl mx-auto">
-              <MinusCircle className="h-10 w-10 text-destructive mx-auto" />
-              <h2 className="text-xl font-semibold text-destructive">Setup Required</h2>
-              <p className="text-muted-foreground">Please create your school profile first to manage classes.</p>
-          </div>
-      );
+    return (
+      <div className="space-y-4 text-center p-10 border border-border rounded-lg mt-8 max-w-xl mx-auto">
+        <MinusCircle className="h-10 w-10 text-destructive mx-auto" />
+        <h2 className="text-xl font-semibold text-destructive">Setup Required</h2>
+        <p className="text-muted-foreground">Please create your school profile first to manage classes.</p>
+      </div>
+    );
   }
 
 
@@ -181,7 +185,6 @@ const Classes = () => {
     <div className="space-y-8 animate-fade-in">
       <h1 className="text-2xl font-bold tracking-tight border-b pb-4">Manage Classes</h1>
 
-      {/* Add New Class Card - RETAINED DESIGN */}
       <Card className="border-primary/50 bg-primary/5">
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2 text-primary">
@@ -190,8 +193,8 @@ const Classes = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-              <div className="md:col-span-2 space-y-2">
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex-1 space-y-2">
                 <Label htmlFor="new-class-name">Class Name (e.g., S.1, S.5)</Label>
                 <Input
                   id="new-class-name"
@@ -201,18 +204,8 @@ const Classes = () => {
                   disabled={isClassAdding}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-class-capacity">Capacity</Label>
-                <Input
-                  id="new-class-capacity"
-                  type="number"
-                  min="1"
-                  value={newClassCapacity}
-                  onChange={(e) => setNewClassCapacity(Math.max(1, parseInt(e.target.value) || 1))}
-                  disabled={isClassAdding}
-                />
-              </div>
-              <Button onClick={handleAddClass} disabled={isClassAdding || newClassName.trim() === "" || newClassCapacity < 1} className="md:col-span-1">
+
+              <Button onClick={handleAddClass} disabled={isClassAdding || newClassName.trim() === ""} className="min-w-[120px]">
                 {isClassAdding ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
@@ -247,25 +240,22 @@ const Classes = () => {
                 <div key={classItem.id} className="flex items-center justify-between p-4 rounded-lg border border-border transition-shadow hover:shadow-sm">
                   <div className="space-y-0.5">
                     <p className="font-semibold text-lg">{classItem.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Capacity: <span className="font-medium text-primary/80">{classItem.capacity}</span> students
-                    </p>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     {/* Placeholder for future links/actions (kept the original structure) */}
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        disabled={true}
-                        className="text-muted-foreground/50"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={true}
+                      className="text-muted-foreground/50"
                     >
-                        View Applicants
+                      View Applicants
                     </Button>
-                    
-                    <Button 
-                      variant="destructive" 
-                      size="icon" 
+
+                    <Button
+                      variant="destructive"
+                      size="icon"
                       onClick={() => handleDeleteClass(classItem.id, classItem.name)}
                       disabled={isClassDeleting === classItem.id || isClassDeleting !== null}
                     >

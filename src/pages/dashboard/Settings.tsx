@@ -20,19 +20,14 @@ interface SchoolProfile {
   status: "pending" | "verified" | "rejected";
 }
 
-interface SchoolClass {
-  id: string;
-  name: string;
-  capacity: number;
-}
 
 const Settings = () => {
   const { toast } = useToast();
-  
+
   // FIX: Cast the return value of useSchoolData to 'any' to bypass 
   // the strict TypeScript check regarding the missing 'schoolName' property.
   const { schoolId, schoolName, isLoading: schoolLoading } = useSchoolData() as any;
-  
+
   // State for School Profile
   const [profile, setProfile] = useState<SchoolProfile>({
     name: schoolName || "",
@@ -44,12 +39,6 @@ const Settings = () => {
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
 
-  // State for Class Management
-  const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [newClassName, setNewClassName] = useState("");
-  const [newClassCapacity, setNewClassCapacity] = useState(30);
-  const [isClassAdding, setIsClassAdding] = useState(false);
-  const [isClassLoading, setIsClassLoading] = useState(true);
 
   // --- Data Fetching ---
 
@@ -67,10 +56,10 @@ const Settings = () => {
 
     if (error || !data) {
       console.error("Error fetching school profile:", error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to load school profile settings.", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "Failed to load school profile settings.",
+        variant: "destructive"
       });
       setProfile(p => ({ ...p, name: schoolName || p.name, status: "pending" })); // Keep known name
     } else {
@@ -85,37 +74,12 @@ const Settings = () => {
     setIsProfileLoading(false);
   }, [schoolId, schoolName, toast]);
 
-  const fetchClasses = useCallback(async () => {
-    if (!schoolId) {
-      setIsClassLoading(false);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('classes')
-      .select('id, name, capacity')
-      .eq('school_id', schoolId)
-      .order('name', { ascending: true });
-
-    if (error) {
-      console.error("Error fetching classes:", error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to load class list.", 
-        variant: "destructive" 
-      });
-    } else {
-      setClasses(data as SchoolClass[]);
-    }
-    setIsClassLoading(false);
-  }, [schoolId, toast]);
 
   useEffect(() => {
     if (schoolId) {
       fetchSchoolProfile();
-      fetchClasses();
     }
-  }, [schoolId, fetchSchoolProfile, fetchClasses]);
+  }, [schoolId, fetchSchoolProfile]);
 
   // --- Handlers ---
 
@@ -124,7 +88,7 @@ const Settings = () => {
     if (!schoolId || isProfileSaving) return;
 
     setIsProfileSaving(true);
-    
+
     // Note: We intentionally exclude 'status' from being updated by the user
     const { name, address, contact_email, is_admissions_open } = profile;
 
@@ -151,89 +115,10 @@ const Settings = () => {
     }
   };
 
-  const handleAddClass = async () => {
-    const trimmedName = newClassName.trim();
-    if (!schoolId || trimmedName === "" || newClassCapacity < 1 || isClassAdding) return;
-
-    if (classes.some(c => c.name.toLowerCase() === trimmedName.toLowerCase())) {
-        toast({
-            title: "Validation Error",
-            description: `A class named "${trimmedName}" already exists.`,
-            variant: "destructive",
-        });
-        return;
-    }
-
-    setIsClassAdding(true);
-
-    const { data, error } = await supabase
-      .from('classes')
-      .insert([
-        { school_id: schoolId, name: trimmedName, capacity: newClassCapacity }
-      ])
-      .select('id, name, capacity')
-      .single();
-
-    setIsClassAdding(false);
-    
-    if (error) {
-      toast({
-        title: "Add Class Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      console.error("Add class error:", error);
-    } else if (data) {
-      setClasses(prev => [...prev, data as SchoolClass]);
-      setNewClassName("");
-      setNewClassCapacity(30);
-      toast({
-        title: "Success",
-        description: `Class "${data.name}" added.`,
-      });
-    }
-  };
-  
-  const handleDeleteClass = async (classId: string) => {
-    // Basic confirmation is assumed to be handled by the UI before calling this
-    if (!schoolId) return;
-
-    // Check if any applicants are associated with this class first (optional but safer)
-    // For simplicity, we proceed with deletion and rely on database foreign key constraints (ON DELETE CASCADE or RESTRICT)
-
-    const { error } = await supabase
-      .from('classes')
-      .delete()
-      .eq('id', classId)
-      .eq('school_id', schoolId); // Security check
-
-    if (error) {
-      if (error.code === '23503') { // PostgreSQL Foreign Key Violation
-        toast({
-            title: "Deletion Failed",
-            description: "Cannot delete class as there are existing applicants linked to it.",
-            variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Deletion Failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-      console.error("Delete class error:", error);
-    } else {
-      setClasses(prev => prev.filter(c => c.id !== classId));
-      toast({
-        title: "Class Deleted",
-        description: "The class was successfully removed.",
-      });
-    }
-  };
 
   // --- Loading/Error State Render ---
 
-  if (schoolLoading || isProfileLoading || isClassLoading) {
+  if (schoolLoading || isProfileLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -301,28 +186,28 @@ const Settings = () => {
                 required
               />
             </div>
-            
+
             <Separator />
 
             {/* Admissions Status */}
             <div className="flex items-center justify-between space-x-4 p-4 rounded-md border bg-muted/50">
-                <div className="space-y-0.5">
-                    <Label className="text-base">Admissions Open</Label>
-                    <p className="text-sm text-muted-foreground">
-                        Toggle this to open or close the application form to the public.
-                    </p>
-                </div>
-                <Switch
-                    checked={profile.is_admissions_open}
-                    onCheckedChange={(checked) => setProfile({ ...profile, is_admissions_open: checked })}
-                    disabled={profile.status !== 'verified'} // Only allow if school is verified
-                />
-            </div>
-            
-            {profile.status !== 'verified' && (
-                <p className="text-sm text-warning">
-                    <AlertTriangle className="h-4 w-4 inline mr-1" /> Admissions toggle is locked until your school profile is **verified**. Current status: **{profile.status}**
+              <div className="space-y-0.5">
+                <Label className="text-base">Admissions Open</Label>
+                <p className="text-sm text-muted-foreground">
+                  Toggle this to open or close the application form to the public.
                 </p>
+              </div>
+              <Switch
+                checked={profile.is_admissions_open}
+                onCheckedChange={(checked) => setProfile({ ...profile, is_admissions_open: checked })}
+                disabled={profile.status !== 'verified'} // Only allow if school is verified
+              />
+            </div>
+
+            {profile.status !== 'verified' && (
+              <p className="text-sm text-warning">
+                <AlertTriangle className="h-4 w-4 inline mr-1" /> Admissions toggle is locked until your school profile is **verified**. Current status: **{profile.status}**
+              </p>
             )}
 
             <Button type="submit" disabled={isProfileSaving}>
@@ -337,78 +222,6 @@ const Settings = () => {
         </CardContent>
       </Card>
 
-      {/* Class Management Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Class Management</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-3">
-            <h3 className="font-semibold text-lg">Existing Classes ({classes.length})</h3>
-            
-            {classes.length === 0 ? (
-                <p className="text-muted-foreground">No classes defined yet.</p>
-            ) : (
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                    {classes.map((cls) => (
-                        <div key={cls.id} className="flex items-center justify-between p-3 border rounded-md bg-background hover:shadow-sm transition-shadow">
-                            <div className="font-medium">{cls.name}</div>
-                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                                <span>Capacity: {cls.capacity}</span>
-                                <Button
-                                    variant="destructive"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    onClick={() => handleDeleteClass(cls.id)}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Add New Class Form */}
-          <div className="space-y-3">
-            <h3 className="font-semibold text-lg">Add New Class</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-              <div className="md:col-span-2 space-y-2">
-                <Label htmlFor="new-class-name">Class Name (e.g., S.1, Primary 4)</Label>
-                <Input
-                  id="new-class-name"
-                  placeholder="Enter class name"
-                  value={newClassName}
-                  onChange={(e) => setNewClassName(e.target.value)}
-                  disabled={isClassAdding}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-class-capacity">Capacity</Label>
-                <Input
-                  id="new-class-capacity"
-                  type="number"
-                  min="1"
-                  value={newClassCapacity}
-                  onChange={(e) => setNewClassCapacity(Math.max(1, parseInt(e.target.value) || 1))}
-                  disabled={isClassAdding}
-                />
-              </div>
-              <Button onClick={handleAddClass} disabled={isClassAdding || newClassName.trim() === "" || newClassCapacity < 1} className="md:col-span-1">
-                {isClassAdding ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                )}
-                Add Class
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

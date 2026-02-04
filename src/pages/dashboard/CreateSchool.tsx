@@ -1,8 +1,8 @@
 // src/pages/dashboard/CreateSchool.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient'; 
-import { useToast } from '@/hooks/use-toast'; 
+import { supabase } from '@/lib/supabaseClient';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,19 +14,19 @@ import { useAuth } from '@/context/AuthContext';
 const CreateSchool = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const { user } = useAuth(); 
-    const { schoolId, schoolStatus, isLoading: schoolLoading } = useSchoolData() as any; 
+    const { user } = useAuth();
+    const { schoolId, schoolStatus, isLoading: schoolLoading } = useSchoolData() as any;
 
     const [schoolName, setSchoolName] = useState('');
     const [address, setAddress] = useState('');
-    const [contactEmail, setContactEmail] = useState(''); 
+    const [contactEmail, setContactEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     useEffect(() => {
         if (!schoolLoading && schoolId) {
-            navigate('/dashboard', { replace: true }); 
+            navigate('/dashboard', { replace: true });
         }
     }, [schoolId, schoolLoading, navigate]);
 
@@ -50,7 +50,12 @@ const CreateSchool = () => {
                     .from('school-assets') // Make sure this bucket exists in Supabase
                     .upload(filePath, logoFile);
 
-                if (uploadError) throw uploadError;
+                if (uploadError) {
+                    if (uploadError.message.includes('bucket not found') || (uploadError as any).status === 404) {
+                        throw new Error("Storage bucket 'school-assets' not found. Please create it in your Supabase Dashboard under Storage.");
+                    }
+                    throw uploadError;
+                }
                 logoUrl = filePath;
             }
 
@@ -75,7 +80,7 @@ const CreateSchool = () => {
             await supabase.from('profiles').update({ school_id: newSchool.id }).eq('id', userId);
 
             toast({ title: "Success!", description: "School profile created and pending verification." });
-            navigate('/dashboard');
+            navigate('/dashboard/pending-approval');
 
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -95,10 +100,10 @@ const CreateSchool = () => {
                     <form onSubmit={handleCreateSchool} className="space-y-4">
                         <div className="space-y-2">
                             <Label>School Logo</Label>
-                            <Input 
-                                type="file" 
-                                accept="image/*" 
-                                onChange={(e) => setLogoFile(e.target.files?.[0] || null)} 
+                            <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
                             />
                         </div>
                         <div className="space-y-2">

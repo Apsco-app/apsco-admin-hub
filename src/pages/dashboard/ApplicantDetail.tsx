@@ -52,32 +52,23 @@ interface ApplicantDetail {
   class_name: string;
   former_school: string | null;
   aggregates: any; // jsonb for results
-  
+
   // Profile (Contact/Guardian)
   guardian_name: string | null;
   guardian_phone: string | null;
   guardian_email: string | null;
 
-  // Documents
-  documents: Array<{
-    id: string;
-    file_path: string;
-    file_name: string;
-    document_type: string;
-    uploaded_at: string;
-  }>;
-  
   // Custom form fields (from aggregates or application_data jsonb)
   application_data: any;
 }
 
 // Helper to format date
 const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    });
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 };
 
 const ApplicantDetail = () => {
@@ -101,7 +92,7 @@ const ApplicantDetail = () => {
   // --- Data Fetching ---
   const fetchApplicantDetail = useCallback(async () => {
     if (!applicantId || !schoolId) return;
-    
+
     setIsLoading(true);
     setError(null);
 
@@ -117,8 +108,7 @@ const ApplicantDetail = () => {
         aggregates,
         application_data,
         classes (name),
-        profiles (full_name, phone, email),
-        applicant_documents (id, file_path, file_name, document_type, uploaded_at)
+        profiles (full_name, phone, email)
       `)
       .eq('id', applicantId)
       .eq('school_id', schoolId) // Ensure this applicant belongs to the school
@@ -131,7 +121,7 @@ const ApplicantDetail = () => {
     } else if (data) {
       const class_name = Array.isArray(data.classes) ? (data.classes[0] as any)?.name : (data.classes as any)?.name;
       const profile = Array.isArray(data.profiles) ? (data.profiles[0] as any) : (data.profiles as any);
-      
+
       setApplicant({
         id: data.id,
         full_name: data.full_name,
@@ -141,28 +131,27 @@ const ApplicantDetail = () => {
         former_school: data.former_school,
         aggregates: data.aggregates,
         application_data: data.application_data,
-        
+
         guardian_name: profile?.full_name || 'N/A',
         guardian_phone: profile?.phone || 'N/A',
         guardian_email: profile?.email || 'N/A',
 
-        documents: data.applicant_documents,
       } as ApplicantDetail);
     }
-    
+
     setIsLoading(false);
   }, [applicantId, schoolId]);
 
   useEffect(() => {
     if (schoolId && applicantId) {
-        fetchApplicantDetail();
+      fetchApplicantDetail();
     }
   }, [schoolId, applicantId, fetchApplicantDetail]);
 
   // --- Status Update Handler ---
   const handleStatusUpdate = async (newStatus: ApplicantStatus) => {
     if (!applicant) return;
-    
+
     setConfirmDialog({ ...confirmDialog, open: false });
     setIsLoading(true);
 
@@ -191,42 +180,6 @@ const ApplicantDetail = () => {
     });
   };
 
-  // --- Document Download Handler ---
-  const handleDownloadDocument = async (filePath: string, fileName: string) => {
-    if (filePath.startsWith('http')) {
-        // Assume direct link if it's a full URL
-        window.open(filePath, '_blank');
-        return;
-    }
-    
-    setIsLoading(true);
-
-    const { data, error } = await supabase.storage
-        .from('applicant_documents') // Assuming this is your storage bucket name
-        .createSignedUrl(filePath, 60); // URL valid for 60 seconds
-
-    setIsLoading(false);
-
-    if (error) {
-        console.error('Error creating signed URL:', error);
-        toast({
-            title: "Download Failed",
-            description: "Could not create a secure link to download the document.",
-            variant: "destructive",
-        });
-        return;
-    }
-
-    if (data?.signedUrl) {
-        // Use a hidden link trick to trigger the download
-        const link = document.createElement('a');
-        link.href = data.signedUrl;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-  };
 
 
   // --- Render Logic ---
@@ -247,23 +200,23 @@ const ApplicantDetail = () => {
         <h2 className="text-xl font-semibold text-destructive">Error Loading Applicant</h2>
         <p className="text-muted-foreground">{error || "Applicant details could not be found."}</p>
         <Button onClick={() => navigate('/dashboard/applicants')} variant="outline">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Applicants
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Applicants
         </Button>
       </div>
     );
   }
-  
+
   const currentStatus = applicant.status;
-  const statusClassName = currentStatus === "accepted" ? "text-success bg-success/10 border-success/30" : 
-                          currentStatus === "rejected" ? "text-destructive bg-destructive/10 border-destructive/30" : 
-                          "text-warning bg-warning/10 border-warning/30";
-  
+  const statusClassName = currentStatus === "accepted" ? "text-success bg-success/10 border-success/30" :
+    currentStatus === "rejected" ? "text-destructive bg-destructive/10 border-destructive/30" :
+      "text-warning bg-warning/10 border-warning/30";
+
   // Format aggregate for display
-  const aggregateDisplay = applicant.aggregates?.ple_aggregate || 
-                           applicant.aggregates?.o_level_points || 
-                           'N/A';
-  
+  const aggregateDisplay = applicant.aggregates?.ple_aggregate ||
+    applicant.aggregates?.o_level_points ||
+    'N/A';
+
   // Extract custom data fields
   const customDataFields = Object.entries(applicant.application_data || {})
     .filter(([key]) => !['full_name', 'class_name', 'former_school'].includes(key.toLowerCase().replace(/[^a-z0-9]/g, '_')));
@@ -285,7 +238,7 @@ const ApplicantDetail = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex gap-3">
           <Button
             variant="outline"
@@ -307,11 +260,11 @@ const ApplicantDetail = () => {
         </div>
       </div>
 
-      {/* Main Content: Status, Details, Documents */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Main Content: Status, Details */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
         {/* Column 1: Core Details */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* Status Card */}
           <div className={`p-4 rounded-lg border ${statusClassName} flex items-center justify-between`}>
             <div className="flex items-center gap-3">
@@ -338,19 +291,28 @@ const ApplicantDetail = () => {
                 <DetailItem label="Date of Application" value={formatDate(applicant.application_date)} icon={Calendar} />
                 <DetailItem label="Former School" value={applicant.former_school || 'N/A'} icon={School} />
                 <DetailItem label="Aggregate/Points" value={aggregateDisplay} icon={FileText} />
-                
+
+                {/* S5 Fields Display */}
+                {applicant.application_data?.uceIndex && (
+                  <DetailItem label="UCE Index Number" value={applicant.application_data.uceIndex} icon={FileText} />
+                )}
+                {applicant.application_data?.subjectCombination && (
+                  <DetailItem label="Subject Combination" value={applicant.application_data.subjectCombination} icon={FileText} />
+                )}
+                {/* End S5 Fields */}
+
                 {customDataFields.map(([key, value]) => (
-                    <DetailItem 
-                        key={key} 
-                        label={key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} 
-                        value={String(value)}
-                        icon={FileText} 
-                    />
+                  <DetailItem
+                    key={key}
+                    label={key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                    value={String(value)}
+                    icon={FileText}
+                  />
                 ))}
               </div>
             </CollapsibleContent>
           </Collapsible>
-          
+
           {/* Guardian/Contact Information */}
           <Collapsible defaultOpen className="border rounded-lg bg-card shadow-sm">
             <CollapsibleTrigger className="flex justify-between w-full p-4 border-b border-border">
@@ -371,51 +333,11 @@ const ApplicantDetail = () => {
           </Collapsible>
         </div>
 
-        {/* Column 2: Documents */}
-        <div className="space-y-6">
-          <Collapsible defaultOpen className="border rounded-lg bg-card shadow-sm">
-            <CollapsibleTrigger className="flex justify-between w-full p-4 border-b border-border">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                Attached Documents ({applicant.documents.length})
-              </h2>
-              <ChevronUp className="h-4 w-4 collapsible-indicator transition-transform" />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="p-4 space-y-3">
-                {applicant.documents.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded.</p>
-                ) : (
-                    applicant.documents.map((doc) => (
-                        <div
-                            key={doc.id}
-                            className="flex items-center justify-between p-3 border rounded-md hover:bg-muted/50 transition-colors"
-                        >
-                            <div className="min-w-0">
-                                <p className="font-medium truncate">{doc.document_type}</p>
-                                <p className="text-xs text-muted-foreground truncate">{doc.file_name}</p>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDownloadDocument(doc.file_path, doc.file_name)}
-                                disabled={isLoading}
-                            >
-                                <Download className="h-3 w-3 mr-1" />
-                                View
-                            </Button>
-                        </div>
-                    ))
-                )}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
       </div>
 
       {/* Confirmation Dialog */}
-      <AlertDialog 
-        open={confirmDialog.open} 
+      <AlertDialog
+        open={confirmDialog.open}
         onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}
       >
         <AlertDialogContent>
@@ -424,7 +346,7 @@ const ApplicantDetail = () => {
               {confirmDialog.action === "accept" ? "Accept Application" : "Reject Application"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmDialog.action === "accept" 
+              {confirmDialog.action === "accept"
                 ? `Are you sure you want to accept ${applicant.full_name}'s application?`
                 : `Are you sure you want to reject ${applicant.full_name}'s application?`
               }
@@ -449,14 +371,14 @@ const ApplicantDetail = () => {
 
 // Simple reusable component for detail rows
 const DetailItem = ({ label, value, icon: Icon }: { label: string, value: string | number | null | undefined, icon: any }) => (
-    <div className="space-y-1">
-        <div className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-1">
-            <Icon className="h-3 w-3" />
-            {label}
-        </div>
-        <p className="font-semibold text-foreground break-words">{value || 'N/A'}</p>
-        <Separator className="mt-1 bg-border/50" />
+  <div className="space-y-1">
+    <div className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-1">
+      <Icon className="h-3 w-3" />
+      {label}
     </div>
+    <p className="font-semibold text-foreground break-words">{value || 'N/A'}</p>
+    <Separator className="mt-1 bg-border/50" />
+  </div>
 );
 
 

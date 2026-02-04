@@ -16,6 +16,7 @@ import AdmissionsSettings from "./pages/dashboard/AdmissionsSettings";
 import Analytics from "./pages/dashboard/Analytics";
 import Payments from "./pages/dashboard/Payments";
 import Settings from "./pages/dashboard/Settings";
+import PendingVerification from "./pages/dashboard/PendingVerification";
 import HomePage from "./pages/HomePage";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
@@ -28,7 +29,7 @@ const App = () => (
   // This ensures the useAuth hook works everywhere.
   <AuthProvider>
     {/* All other contexts and providers that may be required by AuthProvider's children */}
-    <QueryClientProvider client={queryClient}> 
+    <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -36,15 +37,16 @@ const App = () => (
           <Routes>
             {/* Home Page */}
             <Route path="/" element={<HomePage />} />
-            
+
             {/* Auth Routes */}
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/register" element={<Register />} />
-            
+
             {/* Dashboard Routes */}
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="create-school" element={<CreateSchool />} />
+              <Route path="pending-approval" element={<PendingVerification />} />
               <Route path="applicants" element={<Applicants />} />
               <Route path="applicants/:id" element={<ApplicantDetail />} />
               <Route path="classes" element={<Classes />} />
@@ -53,7 +55,7 @@ const App = () => (
               <Route path="payments" element={<Payments />} />
               <Route path="settings" element={<Settings />} />
             </Route>
-            
+
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
