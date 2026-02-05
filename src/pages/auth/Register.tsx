@@ -27,27 +27,27 @@ const Register = () => {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.schoolName.trim()) {
       newErrors.schoolName = "School name is required";
     }
-    
+
     if (!formData.email) {
       newErrors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Please enter a valid email";
     }
-    
+
     if (!formData.password) {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters";
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -62,72 +62,77 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsLoading(true);
     setErrors({});
-    
+
     // Supabase Email/Password Sign Up
     const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-            data: { 
-                // Store the school name as user metadata for initial setup
-                school_name: formData.schoolName 
-            }
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          // Store the school name as user metadata for initial setup
+          school_name: formData.schoolName
         }
+      }
     });
 
     setIsLoading(false);
 
     if (error) {
-        toast({
-            title: "Registration Failed",
-            description: error.message || "An error occurred during sign up.",
-            variant: "destructive",
-        });
-        return;
+      toast({
+        title: "Registration Failed",
+        description: error.message || "An error occurred during sign up.",
+        variant: "destructive",
+      });
+      return;
     }
-    
+
     // Successful Sign Up
     if (data.user) {
-        // User logged in directly after sign up (default Supabase behavior)
-        toast({
-            title: "Registration Successful",
-            description: "Account created! Please complete your school setup.",
-        });
-        navigate("/dashboard/create-school");
+      // User logged in directly after sign up (default Supabase behavior)
+      toast({
+        title: "Registration Successful",
+        description: "Account created! Please complete your school setup.",
+      });
+      navigate("/dashboard/create-school");
     } else if (data.session === null) {
-        // Email confirmation is required (if configured in Supabase settings)
-        toast({
-            title: "Confirmation Required",
-            description: "A confirmation link has been sent to your email. Please verify your account before logging in.",
-        });
-        navigate("/auth/login"); 
+      // Email confirmation is required (if configured in Supabase settings)
+      toast({
+        title: "Confirmation Required",
+        description: "A confirmation link has been sent to your email. Please verify your account before logging in.",
+      });
+      navigate("/auth/login");
     }
   };
 
   const handleGoogleSignUp = async () => {
     setIsLoading(true);
 
+    // Store intended destination for after OAuth callback
+    // This allows AuthCallback to redirect new users to create-school
+    localStorage.setItem('auth_redirect_to', '/dashboard/create-school');
+
     // Supabase Google OAuth Sign Up/In
+    // CRITICAL FIX: Always redirect through /auth/callback for proper token processing
     const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            // Redirect back to the school creation page upon successful sign-up/in
-            redirectTo: `${window.location.origin}/dashboard/create-school`,
-        },
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
-    
+
     if (error) {
-        setIsLoading(false);
-        toast({
-            title: "Google Sign-Up Failed",
-            description: error.message || "Could not start Google sign-up process.",
-            variant: "destructive",
-        });
+      setIsLoading(false);
+      localStorage.removeItem('auth_redirect_to');
+      toast({
+        title: "Google Sign-Up Failed",
+        description: error.message || "Could not start Google sign-up process.",
+        variant: "destructive",
+      });
     }
     // If successful, the redirect handles the rest.
   };
@@ -142,16 +147,16 @@ const Register = () => {
     <div className="min-h-screen flex">
       {/* Left Side - Hero Visual (omitted for brevity) */}
       <Helmet>
-  <title>Register School | APSCO</title>
-  <meta name="robots" content="noindex, nofollow" />
-</Helmet>
-    
+        <title>Register School | APSCO</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
+
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
         <div className="absolute inset-0 opacity-10" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }} />
-        
+
         <div className="relative z-10 flex flex-col justify-center p-12 xl:p-20">
           <div className="max-w-lg">
             <div className="flex items-center gap-4 mb-12">
@@ -160,15 +165,15 @@ const Register = () => {
               </div>
               <span className="text-3xl font-bold text-white tracking-tight">APSCO</span>
             </div>
-            
+
             <h1 className="text-4xl xl:text-5xl font-bold text-white mb-6 leading-tight">
-              Transform Your <br/><span className="text-white/80">Admissions Process</span>
+              Transform Your <br /><span className="text-white/80">Admissions Process</span>
             </h1>
-            
+
             <p className="text-lg text-white/70 mb-12 leading-relaxed">
               Join hundreds of schools across Uganda using APSCO to modernize their student enrollment.
             </p>
-            
+
             <div className="space-y-6">
               {benefits.map((benefit, index) => (
                 <div key={index} className="flex items-start gap-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10">

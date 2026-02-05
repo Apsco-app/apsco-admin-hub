@@ -29,15 +29,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        // Helper to detect OAuth redirect flow
+        const isOAuthRedirect = () => {
+            const hasAccessToken = window.location.hash.includes('access_token');
+            const hasCode = window.location.search.includes('code=');
+            const isCallbackPath = window.location.pathname === '/auth/callback';
+            return hasAccessToken || hasCode || isCallbackPath;
+        };
+
         // 1. Initial Session Check
         const getInitialSession = async () => {
+            console.log('AuthContext: Checking initial session...');
             const { data: { session }, error } = await supabase.auth.getSession();
 
             if (error) {
-                console.error("Error getting initial session:", error);
+                console.error("AuthContext: Error getting initial session:", error);
             }
 
             if (session) {
+                console.log('AuthContext: Found existing session for:', session.user?.email);
                 setSession(session);
                 setUser(session.user);
                 setIsLoading(false);
@@ -46,16 +56,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             // If no session found yet, but we are in an OAuth redirect flow, 
             // wait for onAuthStateChange to handle the session.
-            const isRedirect = window.location.hash.includes('access_token') ||
-                window.location.search.includes('code=');
-
-            if (isRedirect) {
-                console.log("AuthContext: Redirect detected, waiting for session...");
-                // Set a safety timeout in case auth fails silently
-                setTimeout(() => setIsLoading(false), 5000);
+            if (isOAuthRedirect()) {
+                console.log("AuthContext: OAuth redirect detected, waiting for session establishment...");
+                // AuthCallback will handle processing, but set a safety timeout
+                setTimeout(() => {
+                    console.log("AuthContext: Safety timeout reached");
+                    setIsLoading(false);
+                }, 10000); // Increased to 10 seconds to give more time
                 return;
             }
 
+            console.log('AuthContext: No session found, not in OAuth flow');
             setSession(null);
             setUser(null);
             setIsLoading(false);
@@ -66,6 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // 2. Listener for Auth State Changes
         const { data: listener } = supabase.auth.onAuthStateChange(
             (event, newSession) => {
+                console.log('AuthContext: Auth state changed:', event, newSession?.user?.email);
                 setSession(newSession);
                 setUser(newSession?.user ?? null);
                 setIsLoading(false);
@@ -76,7 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return () => {
             listener?.subscription.unsubscribe();
         };
-    }, []); // Dependency array is now empty
+    }, []); // Dependency array is empty
 
     const signOut = async () => {
         setIsLoading(true);

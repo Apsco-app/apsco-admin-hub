@@ -60,12 +60,21 @@ const DashboardLayout = () => {
         }
     }, [isSchoolLoading, schoolId, location.pathname, navigate]);
 
-    // Protect the dashboard: Redirect to home if no session
-    // We rely on useAuth() to handle the loading state first (above).
-    // If we passed the loading check and still have no user, redirect.
+    // Protect the dashboard: Redirect to login if no session
+    // CRITICAL FIX: Check if we're in an OAuth redirect flow to prevent race condition
     useEffect(() => {
-        if (!isAuthLoading && !user) {
-            navigate('/');
+        // Don't redirect if auth is still loading
+        if (isAuthLoading) return;
+
+        // Check if we might be in the middle of an OAuth flow
+        // (tokens in URL hash or auth code in query string)
+        const isOAuthCallback = window.location.hash.includes('access_token') ||
+            window.location.search.includes('code=');
+
+        // If no user and not in OAuth flow, redirect to login
+        if (!user && !isOAuthCallback) {
+            console.log('DashboardLayout: No user session, redirecting to login');
+            navigate('/auth/login', { replace: true });
         }
     }, [isAuthLoading, user, navigate]);
 
