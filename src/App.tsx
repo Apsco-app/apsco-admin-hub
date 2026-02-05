@@ -75,6 +75,11 @@ function AuthStateListener() {
   const location = useLocation();
 
   useEffect(() => {
+    // Don't interfere with the auth callback route - let AuthCallback handle everything
+    if (location.pathname === '/auth/callback') {
+      return;
+    }
+
     // If we have a session, and we're at the root or login page, redirect to dashboard
     if (session) {
       const path = location.pathname;
