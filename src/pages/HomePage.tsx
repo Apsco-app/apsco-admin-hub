@@ -149,7 +149,7 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-       <title>School Admissions Software in Uganda | APSCO</title>
+        <title>School Admissions Software in Uganda | APSCO</title>
       </Helmet>
 
       {/* Header */}
@@ -232,12 +232,12 @@ const HomePage = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="text-center lg:text-left">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight mb-6">
-                 School Admissions Software in Uganda —{" "}
-                 <span className="text-primary">Apply Anytime, Anywhere</span>
+                School Admissions Software in Uganda —{" "}
+                <span className="text-primary">Apply Anytime, Anywhere</span>
               </h1>
               <p className="sr-only">
-  APSCO is an online school admissions and application management platform for schools, parents, and students in Uganda.
-</p>
+                APSCO is an online school admissions and application management platform for schools, parents, and students in Uganda.
+              </p>
 
               <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0">
                 APSCO digitalizes school applications in Uganda, saving families time, money, and stress.
@@ -259,20 +259,11 @@ const HomePage = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 Trusted by parents, students, and schools across Uganda
               </p>
-              <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
-                <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-full border border-border">
-                  <Shield className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Secure Payments</span>
-                </div>
-                <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-full border border-border">
-                  <CheckCircle2 className="h-4 w-4 text-success" />
-                  <span className="text-sm font-medium">Official Schools</span>
-                </div>
-                <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-full border border-border">
-                  <Receipt className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Digital Receipts</span>
-                </div>
+              <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-full border border-border">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                <span className="text-sm font-medium">Official Schools</span>
               </div>
+
             </div>
             <div className="relative flex justify-center lg:justify-end">
               <div className="relative">
@@ -300,10 +291,6 @@ const HomePage = () => {
                         <p className="text-xs text-muted-foreground">Submit applications instantly</p>
                       </div>
                       <div className="bg-muted rounded-xl p-4">
-                        <div className="flex items-center gap-3 mb-2">
-                          <CreditCard className="h-5 w-5 text-primary" />
-                          <span className="font-medium text-sm">Pay Securely</span>
-                        </div>
                         <p className="text-xs text-muted-foreground">Mobile Money & Card</p>
                       </div>
                     </div>
@@ -450,10 +437,6 @@ const HomePage = () => {
                     <span className="text-sm">Application Status</span>
                     <span className="text-xs bg-success/10 text-success px-2 py-1 rounded-full">Accepted</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <span className="text-sm">Payment Receipt</span>
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">Downloaded</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -513,46 +496,6 @@ const HomePage = () => {
                 </Link>
               </Button>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section id="reviews" className="py-16 lg:py-24 bg-background">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              What Users Say About APSCO
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Real stories from parents, students, and school administrators
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={index}
-                className="bg-card rounded-2xl p-6 border border-border shadow-card"
-              >
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: testimonial.rating }).map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-warning text-warning" />
-                  ))}
-                </div>
-                <p className="text-foreground mb-4 italic">"{testimonial.quote}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-primary font-semibold">
-                      {testimonial.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{testimonial.name}</p>
-                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
