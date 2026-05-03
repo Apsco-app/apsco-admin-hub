@@ -339,9 +339,21 @@ const AdmissionsSettings = () => {
         console.error("Global settings save failed:", globalError);
         toast({ title: "Error", description: `Failed to save global settings: ${globalError.message}`, variant: "destructive" });
         success = false;
-      } else if (globalUpdate && !globalSettings.settings_id) {
-        // Update local state with the new ID if it was an INSERT
-        setGlobalSettings(prev => ({ ...prev, settings_id: globalUpdate.id }));
+      } else {
+        if (globalUpdate && !globalSettings.settings_id) {
+          // Update local state with the new ID if it was an INSERT
+          setGlobalSettings(prev => ({ ...prev, settings_id: globalUpdate.id }));
+        }
+
+        // SYNC WITH SCHOOLS TABLE
+        const { error: schoolUpdateError } = await supabase
+          .from('schools')
+          .update({ is_admissions_open: globalSettings.is_open })
+          .eq('id', schoolId);
+
+        if (schoolUpdateError) {
+          console.error("Failed to sync with schools table:", schoolUpdateError);
+        }
       }
 
       // 2. Save Per-Class Field Configurations (Loop and UPSERT)
@@ -421,6 +433,16 @@ const AdmissionsSettings = () => {
 
           return updated;
         });
+
+        // SYNC WITH CLASSES TABLE
+        // We do this individually because Supabase 'upsert' or 'update' on multiple rows with varying data might need specific handling,
+        // but since we just need to update `accepting_applications` on `classes`:
+        for (const c of classSettings) {
+          await supabase
+            .from('classes')
+            .update({ accepting_applications: c.is_admissions_enabled })
+            .eq('id', c.id);
+        }
       }
 
       if (success) {

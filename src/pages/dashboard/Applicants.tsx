@@ -246,14 +246,94 @@ const Applicants = () => {
     }
   };
 
-  const handleExport = () => {
-    // In a real application, this would trigger a backend process
+  const handleExport = async () => {
+    if (!schoolId) return;
+
     toast({
       title: "Export Initiated",
       description: "A CSV export of all applicants is being generated and will be downloaded shortly.",
     });
-    // Mock delay
-    setTimeout(() => console.log("Simulating CSV download..."), 1000);
+
+    try {
+      let query = supabase
+        .from('applicants')
+        .select(`
+          id, 
+          full_name, 
+          status, 
+          application_date,
+          aggregates,
+          classes (name)
+        `)
+        .eq('school_id', schoolId)
+        .order(sortColumn, { ascending: sortDirection === 'asc' });
+
+      // Apply filters
+      if (statusFilter !== "all") {
+        query = query.eq('status', statusFilter);
+      }
+
+      if (classFilter !== "all") {
+        query = query.eq('class_id', classFilter);
+      }
+
+      if (searchQuery.trim()) {
+        query = query.ilike('full_name', `%${searchQuery.trim()}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        toast({
+          title: "Export Failed",
+          description: "No data available to export.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Format data for CSV
+      const headers = ["Applicant Name", "Class", "Aggregate/Points", "Status", "Applied On"];
+      
+      const csvContent = [
+        headers.join(","),
+        ...data.map((a: any) => {
+          const name = `"${(a.full_name || "").replace(/"/g, '""')}"`;
+          const className = `"${(a.classes?.name || 'N/A').replace(/"/g, '""')}"`;
+          const aggregatesVal = a.aggregates?.pleAggregates || a.aggregates?.ple_aggregate || a.aggregates?.o_level_points;
+          const aggregates = `"${aggregatesVal !== undefined && aggregatesVal !== null ? String(aggregatesVal).replace(/"/g, '""') : 'N/A'}"`;
+          const status = `"${(a.status || "").replace(/"/g, '""')}"`;
+          const appliedOn = `"${new Date(a.application_date).toLocaleDateString().replace(/"/g, '""')}"`;
+          
+          return [name, className, aggregates, status, appliedOn].join(",");
+        })
+      ].join("\n");
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `applicants_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Export Complete",
+        description: "Your CSV file has been downloaded successfully.",
+      });
+
+    } catch (error: any) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export Failed",
+        description: "An error occurred while generating the CSV.",
+        variant: "destructive",
+      });
+    }
   };
 
 
