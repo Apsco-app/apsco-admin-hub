@@ -88,10 +88,12 @@ const Applicants = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ApplicantStatus | "all">("all");
   const [classFilter, setClassFilter] = useState<string | "all">("all");
+  const [maxAggregate, setMaxAggregate] = useState<number | "">("");
   const [sortColumn, setSortColumn] = useState<keyof Applicant>("application_date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // --- UI State ---
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     action: "accept" | "reject";
@@ -133,6 +135,7 @@ const Applicants = () => {
         status, 
         application_date,
         aggregates,
+        best_aggregate,
         classes (name)
       `, { count: 'exact' }) // Request exact count
       .eq('school_id', schoolId)
@@ -147,6 +150,10 @@ const Applicants = () => {
     if (classFilter !== "all") {
       // Need to filter on the joined column (class_id)
       query = query.eq('class_id', classFilter);
+    }
+
+    if (maxAggregate !== "") {
+      query = query.lte('best_aggregate', maxAggregate);
     }
 
     if (searchQuery.trim()) {
@@ -167,7 +174,7 @@ const Applicants = () => {
         full_name: a.full_name,
         application_date: a.application_date,
         status: a.status as ApplicantStatus,
-        aggregates: a.aggregates?.pleAggregates || a.aggregates?.ple_aggregate || a.aggregates?.o_level_points || null,
+        aggregates: a.best_aggregate !== null ? a.best_aggregate : (a.aggregates?.pleAggregates || a.aggregates?.ple_aggregate || a.aggregates?.o_level_points || null),
         class_name: a.classes?.name || 'N/A',
       }));
 
@@ -176,7 +183,7 @@ const Applicants = () => {
     }
 
     setIsLoading(false);
-  }, [schoolId, page, statusFilter, classFilter, searchQuery, sortColumn, sortDirection, toast]);
+  }, [schoolId, page, statusFilter, classFilter, maxAggregate, searchQuery, sortColumn, sortDirection, toast]);
 
   // Fetch classes once
   const fetchClasses = useCallback(async () => {
@@ -235,6 +242,50 @@ const Applicants = () => {
       description: `Applicant status changed to ${newStatus}.`,
     });
     fetchApplicants();
+  };
+
+  const handleBulkAccept = async () => {
+    if (!schoolId || maxAggregate === "") return;
+
+    const confirmed = window.confirm(`Are you sure you want to accept ALL pending applicants with an aggregate of ${maxAggregate} or better?`);
+    if (!confirmed) return;
+
+    setIsBulkUpdating(true);
+
+    try {
+      let query = supabase
+        .from('applicants')
+        .update({ status: 'accepted', updated_at: new Date().toISOString() })
+        .eq('school_id', schoolId)
+        .eq('status', 'pending')
+        .lte('best_aggregate', maxAggregate);
+
+      if (classFilter !== "all") {
+        query = query.eq('class_id', classFilter);
+      }
+
+      const { error: updateError } = await query;
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Bulk Accept Successful",
+        description: `Successfully accepted eligible applicants.`,
+      });
+      
+      // Refresh the table
+      fetchApplicants();
+
+    } catch (error: any) {
+      console.error("Bulk update error:", error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "An error occurred during bulk update.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkUpdating(false);
+    }
   };
 
   const handleSort = (column: keyof Applicant) => {
@@ -381,10 +432,22 @@ const Applicants = () => {
       {/* Header */}
       <div className="flex justify-between items-center pb-4 border-b border-border">
         <h1 className="text-2xl font-bold text-foreground">Applicant Management</h1>
-        <Button onClick={handleExport} variant="outline" disabled={isLoading || totalCount === 0}>
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex space-x-2">
+          {statusFilter === "pending" && maxAggregate !== "" && (
+            <Button 
+              onClick={handleBulkAccept} 
+              disabled={isBulkUpdating || isLoading || totalCount === 0}
+              className="bg-success hover:bg-success/90 text-white"
+            >
+              {isBulkUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
+              Accept All (≤ {maxAggregate})
+            </Button>
+          )}
+          <Button onClick={handleExport} variant="outline" disabled={isLoading || totalCount === 0}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Controls */}
@@ -406,6 +469,22 @@ const Applicants = () => {
         </div>
 
         <div className="flex w-full sm:w-auto space-x-2 justify-end">
+          {/* Aggregate Filter */}
+          <div className="relative">
+            <Filter className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="number"
+              placeholder="Max Aggregate"
+              className="pl-9 w-[150px]"
+              value={maxAggregate}
+              onChange={(e) => {
+                setMaxAggregate(e.target.value === "" ? "" : Number(e.target.value));
+                setPage(0);
+              }}
+              disabled={isLoading}
+            />
+          </div>
+
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={(val) => {
             setStatusFilter(val as ApplicantStatus | "all");
