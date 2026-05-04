@@ -64,6 +64,11 @@ interface Applicant {
   class_name: string;
   status: ApplicantStatus;
   aggregates: number | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  former_school: string | null;
+  student_email: string | null;
+  phone: string | null;
 }
 
 interface ClassItem {
@@ -110,6 +115,11 @@ const Applicants = () => {
     application_date: true,
     status: true,
     aggregates: true,
+    date_of_birth: true,
+    gender: true,
+    former_school: true,
+    student_email: true,
+    phone: true,
     id: false, // Hidden by default
     actions: true,
   });
@@ -136,6 +146,11 @@ const Applicants = () => {
         application_date,
         aggregates,
         best_aggregate,
+        date_of_birth,
+        gender,
+        former_school,
+        student_email,
+        phone,
         classes (name)
       `, { count: 'exact' }) // Request exact count
       .eq('school_id', schoolId)
@@ -176,6 +191,11 @@ const Applicants = () => {
         status: a.status as ApplicantStatus,
         aggregates: a.best_aggregate !== null ? a.best_aggregate : (a.aggregates?.pleAggregates || a.aggregates?.ple_aggregate || a.aggregates?.o_level_points || null),
         class_name: a.classes?.name || 'N/A',
+        date_of_birth: a.date_of_birth,
+        gender: a.gender,
+        former_school: a.former_school,
+        student_email: a.student_email,
+        phone: a.phone,
       }));
 
       setApplicants(formattedApplicants);
@@ -314,6 +334,12 @@ const Applicants = () => {
           status, 
           application_date,
           aggregates,
+          best_aggregate,
+          date_of_birth,
+          gender,
+          former_school,
+          student_email,
+          phone,
           classes (name)
         `)
         .eq('school_id', schoolId)
@@ -346,19 +372,24 @@ const Applicants = () => {
       }
 
       // Format data for CSV
-      const headers = ["Applicant Name", "Class", "Aggregate/Points", "Status", "Applied On"];
+      const headers = ["Applicant Name", "Class", "Aggregate/Points", "Status", "DOB", "Gender", "Former School", "Email", "Phone", "Applied On"];
       
       const csvContent = [
         headers.join(","),
         ...data.map((a: any) => {
           const name = `"${(a.full_name || "").replace(/"/g, '""')}"`;
           const className = `"${(a.classes?.name || 'N/A').replace(/"/g, '""')}"`;
-          const aggregatesVal = a.aggregates?.pleAggregates || a.aggregates?.ple_aggregate || a.aggregates?.o_level_points;
+          const aggregatesVal = a.best_aggregate !== null ? a.best_aggregate : (a.aggregates?.pleAggregates || a.aggregates?.ple_aggregate || a.aggregates?.o_level_points);
           const aggregates = `"${aggregatesVal !== undefined && aggregatesVal !== null ? String(aggregatesVal).replace(/"/g, '""') : 'N/A'}"`;
           const status = `"${(a.status || "").replace(/"/g, '""')}"`;
+          const dob = `"${a.date_of_birth ? new Date(a.date_of_birth).toLocaleDateString().replace(/"/g, '""') : 'N/A'}"`;
+          const gender = `"${(a.gender || "N/A").replace(/"/g, '""')}"`;
+          const formerSchool = `"${(a.former_school || "N/A").replace(/"/g, '""')}"`;
+          const email = `"${(a.student_email || "N/A").replace(/"/g, '""')}"`;
+          const phone = `"${(a.phone || "N/A").replace(/"/g, '""')}"`;
           const appliedOn = `"${new Date(a.application_date).toLocaleDateString().replace(/"/g, '""')}"`;
           
-          return [name, className, aggregates, status, appliedOn].join(",");
+          return [name, className, aggregates, status, dob, gender, formerSchool, email, phone, appliedOn].join(",");
         })
       ].join("\n");
 
@@ -406,9 +437,14 @@ const Applicants = () => {
 
   const columns: { key: keyof Applicant | 'actions', label: string, sortable: boolean }[] = [
     { key: "full_name", label: "Applicant Name", sortable: true },
-    { key: "class_name", label: "Class", sortable: false }, // Class name is complex to sort via Supabase join without an RPC
+    { key: "class_name", label: "Class", sortable: false },
     { key: "aggregates", label: "Aggregate/Points", sortable: true },
     { key: "status", label: "Status", sortable: true },
+    { key: "date_of_birth", label: "DOB", sortable: true },
+    { key: "gender", label: "Gender", sortable: true },
+    { key: "former_school", label: "Former School", sortable: true },
+    { key: "student_email", label: "Email", sortable: true },
+    { key: "phone", label: "Phone", sortable: true },
     { key: "application_date", label: "Applied On", sortable: true },
     { key: "actions", label: "Actions", sortable: false },
   ];
@@ -594,6 +630,11 @@ const Applicants = () => {
                       </span>
                     </TableCell>
                   )}
+                  {columnVisibility.date_of_birth && <TableCell>{applicant.date_of_birth ? new Date(applicant.date_of_birth).toLocaleDateString() : 'N/A'}</TableCell>}
+                  {columnVisibility.gender && <TableCell>{applicant.gender || 'N/A'}</TableCell>}
+                  {columnVisibility.former_school && <TableCell className="max-w-[150px] truncate">{applicant.former_school || 'N/A'}</TableCell>}
+                  {columnVisibility.student_email && <TableCell>{applicant.student_email || 'N/A'}</TableCell>}
+                  {columnVisibility.phone && <TableCell>{applicant.phone || 'N/A'}</TableCell>}
                   {columnVisibility.application_date && (
                     <TableCell>{new Date(applicant.application_date).toLocaleDateString()}</TableCell>
                   )}
