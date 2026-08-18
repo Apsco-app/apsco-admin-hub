@@ -1,4 +1,3 @@
-// src/pages/dashboard/CreateSchool.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Building2, CheckCircle2, AlertTriangle, Upload, Phone } from 'lucide-react';
+import { Loader2, Building2 } from 'lucide-react';
 import { useSchoolData } from '@/hooks/useSchoolData';
 import { useAuth } from '@/context/AuthContext';
 
@@ -15,7 +14,7 @@ const CreateSchool = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
-    const { schoolId, schoolStatus, isLoading: schoolLoading } = useSchoolData() as any;
+    const { schoolId, isLoading: schoolLoading } = useSchoolData() as any;
 
     const [schoolName, setSchoolName] = useState('');
     const [address, setAddress] = useState('');
@@ -29,6 +28,31 @@ const CreateSchool = () => {
             navigate('/dashboard', { replace: true });
         }
     }, [schoolId, schoolLoading, navigate]);
+
+    // Helper function: Free Nominatim Geocoding
+    const geocodeAddress = async (searchAddress: string) => {
+        try {
+            const query = encodeURIComponent(`${searchAddress}, Uganda`);
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`,
+                {
+                    headers: {
+                        'User-Agent': 'Apsco-Web-App' // Nominatim requires a user-agent header
+                    }
+                }
+            );
+            const data = await response.json();
+            if (data && data.length > 0) {
+                return {
+                    latitude: parseFloat(data[0].lat),
+                    longitude: parseFloat(data[0].lon)
+                };
+            }
+        } catch (error) {
+            console.error('Geocoding error:', error);
+        }
+        return { latitude: null, longitude: null };
+    };
 
     const handleCreateSchool = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -47,7 +71,7 @@ const CreateSchool = () => {
                 const filePath = `logos/${fileName}`;
 
                 const { error: uploadError } = await supabase.storage
-                    .from('school-assets') // Make sure this bucket exists in Supabase
+                    .from('school-assets')
                     .upload(filePath, logoFile);
 
                 if (uploadError) {
@@ -59,7 +83,10 @@ const CreateSchool = () => {
                 logoUrl = filePath;
             }
 
-            // 2. Create School Entry
+            // 2. Fetch Geocoded Coordinates for the provided Address
+            const { latitude, longitude } = await geocodeAddress(address.trim());
+
+            // 3. Create School Entry with Coordinates
             const { data: newSchool, error: schoolError } = await supabase
                 .from('schools')
                 .insert({
@@ -70,16 +97,19 @@ const CreateSchool = () => {
                     logo_url: logoUrl,
                     user_id: userId,
                     status: 'pending',
+                    latitude: latitude,
+                    longitude: longitude,
+                    is_verified: true // Official web dashboard creations are verified
                 })
                 .select('id')
                 .single();
 
             if (schoolError) throw schoolError;
 
-            // 3. Link Profile
+            // 4. Link Profile
             await supabase.from('profiles').update({ school_id: newSchool.id }).eq('id', userId);
 
-            toast({ title: "Success!", description: "School profile created and pending verification." });
+            toast({ title: "Success!", description: "School profile created with location coordinates." });
             navigate('/dashboard/pending-approval');
 
         } catch (error: any) {
@@ -121,8 +151,13 @@ const CreateSchool = () => {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>Physical Address</Label>
-                            <Input value={address} onChange={(e) => setAddress(e.target.value)} required />
+                            <Label>Physical Address (e.g. "Naalya, Wakiso")</Label>
+                            <Input 
+                                value={address} 
+                                onChange={(e) => setAddress(e.target.value)} 
+                                placeholder="e.g. Namugongo Road, Wakiso District"
+                                required 
+                            />
                         </div>
                         <Button type="submit" className="w-full" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Building2 className="mr-2" />}
