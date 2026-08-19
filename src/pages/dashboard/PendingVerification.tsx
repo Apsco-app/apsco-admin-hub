@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -7,27 +7,34 @@ import { useSchoolData } from '@/hooks/useSchoolData';
 
 const PendingVerification = () => {
     const navigate = useNavigate();
-    // Connect to the global school data hook which has real-time subscriptions
     const { schoolStatus, schoolId, isLoading, fetchSchoolData, profileError } = useSchoolData() as any;
 
-    // Auto-redirect when status changes to verified
+    // Preserve latest fetch function reference to avoid interval resets
+    const fetchRef = useRef(fetchSchoolData);
     useEffect(() => {
-        if (schoolStatus === 'verified') {
+        fetchRef.current = fetchSchoolData;
+    }, [fetchSchoolData]);
+
+    // Redirect when status becomes verified or approved
+    useEffect(() => {
+        if (schoolStatus === 'verified' || schoolStatus === 'approved') {
             navigate('/dashboard', { replace: true });
         }
     }, [schoolStatus, navigate]);
 
-    // Polling fallback: Check status every 5 seconds
+    // Polling fallback: Check status every 5 seconds without triggering render loops
     useEffect(() => {
         const intervalId = setInterval(() => {
-            fetchSchoolData();
+            if (fetchRef.current) {
+                fetchRef.current();
+            }
         }, 5000);
 
         return () => clearInterval(intervalId);
-    }, [fetchSchoolData]);
+    }, []);
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] max-w-2xl mx-auto p-4 animate-fade-in">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] max-w-2xl mx-auto p-4">
             <Card className="w-full text-center border-2 border-primary/20 shadow-lg">
                 <CardHeader className="pb-2">
                     <div className="mx-auto bg-primary/10 p-4 rounded-full w-20 h-20 flex items-center justify-center mb-4">

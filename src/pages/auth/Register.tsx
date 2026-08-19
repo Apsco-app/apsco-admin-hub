@@ -16,7 +16,6 @@ const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    schoolName: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -27,10 +26,6 @@ const Register = () => {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-
-    if (!formData.schoolName.trim()) {
-      newErrors.schoolName = "School name is required";
-    }
 
     if (!formData.email) {
       newErrors.email = "Email is required";
@@ -72,12 +67,6 @@ const Register = () => {
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
-      options: {
-        data: {
-          // Store the school name as user metadata for initial setup
-          school_name: formData.schoolName
-        }
-      }
     });
 
     setIsLoading(false);
@@ -230,23 +219,7 @@ const Register = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="schoolName" className="text-sm font-medium">School Name</Label>
-              <Input
-                id="schoolName"
-                name="schoolName"
-                type="text"
-                placeholder="St. Mary's Secondary School"
-                value={formData.schoolName}
-                onChange={handleChange}
-                className={`h-12 text-base ${errors.schoolName ? "border-destructive" : ""}`}
-                disabled={isLoading}
-              />
-              {errors.schoolName && (
-                <p className="text-sm text-destructive">{errors.schoolName}</p>
-              )}
-            </div>
-
+            
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
               <Input

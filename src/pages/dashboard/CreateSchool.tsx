@@ -21,6 +21,12 @@ const CreateSchool = () => {
     const [contactEmail, setContactEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [logoFile, setLogoFile] = useState<File | null>(null);
+    
+    // New state variables
+    const [feesRange, setFeesRange] = useState('');
+    const [schoolType, setSchoolType] = useState('');
+    const [curriculum, setCurriculum] = useState('');
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -91,6 +97,9 @@ const CreateSchool = () => {
                 .from('schools')
                 .insert({
                     name: schoolName.trim(),
+                    type: schoolType,
+                    curriculum: curriculum,
+                    fees_range: feesRange.trim(),
                     address: address.trim(),
                     contact_email: contactEmail.trim(),
                     phone_number: phone.trim(),
@@ -140,6 +149,51 @@ const CreateSchool = () => {
                             <Label>Official School Name</Label>
                             <Input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} required />
                         </div>
+                        
+                        {/* New Type and Curriculum Row */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>School Type</Label>
+                                <select
+                                    value={schoolType}
+                                    onChange={(e) => setSchoolType(e.target.value)}
+                                    required
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option value="" disabled>Select Type</option>
+                                    <option value="Public">Public</option>
+                                    <option value="Private">Private</option>
+                                    <option value="International">International</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Curriculum</Label>
+                                <select
+                                    value={curriculum}
+                                    onChange={(e) => setCurriculum(e.target.value)}
+                                    required
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option value="" disabled>Select Curriculum</option>
+                                    <option value="UNEB Curriculum">UNEB Curriculum</option>
+                                    <option value="Accelerated Christian Education (ACE)">Accelerated Christian Education (ACE)</option>
+                                    <option value="Cambridge curriculum">Cambridge curriculum</option>
+                                    <option value="The American National Curriculum">The American National Curriculum</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* New Fees Range Input */}
+                        <div className="space-y-2">
+                            <Label>Fees Range</Label>
+                            <Input 
+                                value={feesRange} 
+                                onChange={(e) => setFeesRange(e.target.value)} 
+                                placeholder="e.g. 500,000 - 1,500,000 UGX per term"
+                                required 
+                            />
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Contact Email</Label>
