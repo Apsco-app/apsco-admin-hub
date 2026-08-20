@@ -618,19 +618,12 @@ const HomePage = () => {
                 <li><a href="#for-schools" className="hover:text-background transition-colors">For Schools</a></li>
               </ul>
             </div>
-            <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-sm text-background/70">
-                <li><a href="#faqs" className="hover:text-background transition-colors">FAQs</a></li>
-                <li><a href="#" className="hover:text-background transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-background transition-colors">Help Center</a></li>
-              </ul>
-            </div>
+            
             <div>
               <h4 className="font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-sm text-background/70">
-                <li><a href="#" className="hover:text-background transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-background transition-colors">Terms of Service</a></li>
+                <li><a href="Privacy" className="hover:text-background transition-colors">Privacy Policy</a></li>
+                <li><a href="Privacy" className="hover:text-background transition-colors">Terms of Service</a></li>
               </ul>
             </div>
           </div>

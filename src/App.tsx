@@ -20,9 +20,9 @@ import Payments from "./pages/dashboard/Payments";
 import Settings from "./pages/dashboard/Settings";
 import PendingVerification from "./pages/dashboard/PendingVerification";
 import HomePage from "./pages/HomePage";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-
 
 const queryClient = new QueryClient();
 
@@ -40,6 +40,9 @@ const App = () => (
           <Routes>
             {/* Home Page */}
             <Route path="/" element={<HomePage />} />
+            
+            {/* Legal Pages */}
+            <Route path="/privacy" element={<Privacy />} />
 
             {/* Auth Routes */}
             <Route path="/auth/login" element={<Login />} />
