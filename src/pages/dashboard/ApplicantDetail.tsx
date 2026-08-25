@@ -1,21 +1,18 @@
 // src/pages/dashboard/ApplicantDetail.tsx
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   User,
   School,
   FileText,
-  Download,
   Check,
   X,
   ChevronDown,
-  ChevronUp,
   Mail,
   Phone,
   Calendar,
-  MapPin,
   Loader2,
   MinusCircle,
   FileBadge2,
@@ -38,32 +35,33 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase"; // <-- NEW
-import { useSchoolData } from "@/hooks/useSchoolData"; // <-- NEW
+import { supabase } from "@/lib/supabase";
+import { useSchoolData } from "@/hooks/useSchoolData";
 
 type ApplicantStatus = "pending" | "accepted" | "rejected";
 
-// Detailed Applicant Interface combining joins
 interface ApplicantDetail {
   id: string;
   full_name: string;
+  date_of_birth: string | null;
+  gender: string | null;
+  student_email: string | null;
+  phone: string | null;
   status: ApplicantStatus;
   application_date: string;
   class_name: string;
   former_school: string | null;
-  aggregates: any; // jsonb for results
+  aggregates: any;
 
-  // Profile (Contact/Guardian)
   guardian_name: string | null;
   guardian_phone: string | null;
   guardian_email: string | null;
 
-  // Custom form fields (from aggregates or application_data jsonb)
-  application_data: any;
+  application_data: Record<string, any>;
 }
 
-// Helper to format date
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string | null) => {
+  if (!dateString) return 'N/A';
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -89,19 +87,21 @@ const ApplicantDetail = () => {
     action: "accept",
   });
 
-  // --- Data Fetching ---
   const fetchApplicantDetail = useCallback(async () => {
     if (!applicantId || !schoolId) return;
 
     setIsLoading(true);
     setError(null);
 
-    // Fetch applicant details, joining profile and documents
     const { data, error } = await supabase
       .from('applicants')
       .select(`
         id, 
         full_name, 
+        date_of_birth,
+        gender,
+        student_email,
+        phone,
         status, 
         application_date,
         former_school,
@@ -111,7 +111,7 @@ const ApplicantDetail = () => {
         profiles (full_name, phone, email)
       `)
       .eq('id', applicantId)
-      .eq('school_id', schoolId) // Ensure this applicant belongs to the school
+      .eq('school_id', schoolId)
       .single();
 
     if (error) {
@@ -125,18 +125,21 @@ const ApplicantDetail = () => {
       setApplicant({
         id: data.id,
         full_name: data.full_name,
+        date_of_birth: data.date_of_birth,
+        gender: data.gender,
+        student_email: data.student_email,
+        phone: data.phone,
         status: data.status as ApplicantStatus,
         application_date: data.application_date,
         class_name: class_name || 'N/A',
         former_school: data.former_school,
-        aggregates: data.aggregates,
-        application_data: data.application_data,
+        aggregates: data.aggregates || {},
+        application_data: data.application_data || {},
 
         guardian_name: profile?.full_name || 'N/A',
         guardian_phone: profile?.phone || 'N/A',
         guardian_email: profile?.email || 'N/A',
-
-      } as ApplicantDetail);
+      });
     }
 
     setIsLoading(false);
@@ -148,7 +151,6 @@ const ApplicantDetail = () => {
     }
   }, [schoolId, applicantId, fetchApplicantDetail]);
 
-  // --- Status Update Handler ---
   const handleStatusUpdate = async (newStatus: ApplicantStatus) => {
     if (!applicant) return;
 
@@ -168,21 +170,15 @@ const ApplicantDetail = () => {
         description: error.message,
         variant: "destructive",
       });
-      console.error("Status update error:", error);
       return;
     }
 
-    // Success: Update local state
     setApplicant({ ...applicant, status: newStatus });
     toast({
       title: "Status Updated",
       description: `Application status changed to ${newStatus}.`,
     });
   };
-
-
-
-  // --- Render Logic ---
 
   if (schoolLoading || isLoading) {
     return (
@@ -212,18 +208,17 @@ const ApplicantDetail = () => {
     currentStatus === "rejected" ? "text-destructive bg-destructive/10 border-destructive/30" :
       "text-warning bg-warning/10 border-warning/30";
 
-  // Format aggregate for display
   const aggregateDisplay = applicant.aggregates?.ple_aggregate ||
-    applicant.aggregates?.o_level_points ||
+    applicant.aggregates?.uce_aggregates ||
     'N/A';
 
-  // Extract custom data fields
-  const customDataFields = Object.entries(applicant.application_data || {})
-    .filter(([key]) => !['full_name', 'class_name', 'former_school'].includes(key.toLowerCase().replace(/[^a-z0-9]/g, '_')));
+  // Extract dynamic fields, excluding keys handled directly
+  const excludedKeys = ['fullName', 'full_name', 'phone', 'email', 'student_email', 'formerSchool', 'former_school', 'gender', 'dateOfBirth', 'date_of_birth'];
+  const customDataFields = Object.entries(applicant.application_data)
+    .filter(([key, val]) => !excludedKeys.includes(key) && val !== null && val !== '');
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header and Actions */}
       <div className="flex justify-between items-center pb-4 border-b border-border">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)} disabled={isLoading}>
@@ -260,12 +255,9 @@ const ApplicantDetail = () => {
         </div>
       </div>
 
-      {/* Main Content: Status, Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
-        {/* Column 1: Core Details */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* Status Card */}
           <div className={`p-4 rounded-lg border ${statusClassName} flex items-center justify-between`}>
             <div className="flex items-center gap-3">
               <FileBadge2 className="h-5 w-5" />
@@ -276,7 +268,6 @@ const ApplicantDetail = () => {
             </span>
           </div>
 
-          {/* Applicant Information */}
           <Collapsible defaultOpen className="border rounded-lg bg-card shadow-sm">
             <CollapsibleTrigger className="flex justify-between w-full p-4 border-b border-border">
               <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -288,18 +279,13 @@ const ApplicantDetail = () => {
             <CollapsibleContent>
               <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <DetailItem label="Full Name" value={applicant.full_name} icon={User} />
+                <DetailItem label="Date of Birth" value={formatDate(applicant.date_of_birth || applicant.application_data?.dateOfBirth)} icon={Calendar} />
+                <DetailItem label="Gender" value={applicant.gender || applicant.application_data?.gender} icon={User} />
+                <DetailItem label="Applicant Phone" value={applicant.phone || applicant.application_data?.phone} icon={Phone} />
+                <DetailItem label="Applicant Email" value={applicant.student_email || applicant.application_data?.email} icon={Mail} />
                 <DetailItem label="Date of Application" value={formatDate(applicant.application_date)} icon={Calendar} />
-                <DetailItem label="Former School" value={applicant.former_school || 'N/A'} icon={School} />
+                <DetailItem label="Former School" value={applicant.former_school || applicant.application_data?.formerSchool || 'N/A'} icon={School} />
                 <DetailItem label="Aggregate/Points" value={aggregateDisplay} icon={FileText} />
-
-                {/* S5 Fields Display */}
-                {applicant.application_data?.uceIndex && (
-                  <DetailItem label="UCE Index Number" value={applicant.application_data.uceIndex} icon={FileText} />
-                )}
-                {applicant.application_data?.subjectCombination && (
-                  <DetailItem label="Subject Combination" value={applicant.application_data.subjectCombination} icon={FileText} />
-                )}
-                {/* End S5 Fields */}
 
                 {customDataFields.map(([key, value]) => (
                   <DetailItem
@@ -313,29 +299,27 @@ const ApplicantDetail = () => {
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Guardian/Contact Information */}
           <Collapsible defaultOpen className="border rounded-lg bg-card shadow-sm">
             <CollapsibleTrigger className="flex justify-between w-full p-4 border-b border-border">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <School className="h-5 w-5 text-primary" />
-                Contact Information
+                Parent / Guardian Information
               </h2>
               <ChevronDown className="h-4 w-4 collapsible-indicator transition-transform" />
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <DetailItem label="Guardian Name" value={applicant.guardian_name} icon={User} />
-                <DetailItem label="Phone" value={applicant.guardian_phone} icon={Phone} />
-                <DetailItem label="Email" value={applicant.guardian_email} icon={Mail} />
-                {/* Note: You might want to add physical address here from profile if available */}
+                <DetailItem label="Guardian Name" value={applicant.application_data?.parentName || applicant.guardian_name} icon={User} />
+                <DetailItem label="Guardian Phone" value={applicant.guardian_phone} icon={Phone} />
+                <DetailItem label="Guardian Email" value={applicant.guardian_email} icon={Mail} />
+                <DetailItem label="Home Address" value={applicant.application_data?.address} icon={School} />
+                <DetailItem label="Parent NIN" value={applicant.application_data?.nin} icon={FileText} />
               </div>
             </CollapsibleContent>
           </Collapsible>
         </div>
-
       </div>
 
-      {/* Confirmation Dialog */}
       <AlertDialog
         open={confirmDialog.open}
         onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}
@@ -355,7 +339,6 @@ const ApplicantDetail = () => {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              // FIX: Map the dialog action ("accept" or "reject") to the final status ("accepted" or "rejected")
               onClick={() => handleStatusUpdate(confirmDialog.action === "accept" ? "accepted" : "rejected")}
               className={confirmDialog.action === "reject" ? "bg-destructive hover:bg-destructive/90" : ""}
               disabled={isLoading}
@@ -369,7 +352,6 @@ const ApplicantDetail = () => {
   );
 };
 
-// Simple reusable component for detail rows
 const DetailItem = ({ label, value, icon: Icon }: { label: string, value: string | number | null | undefined, icon: any }) => (
   <div className="space-y-1">
     <div className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-1">
@@ -380,6 +362,5 @@ const DetailItem = ({ label, value, icon: Icon }: { label: string, value: string
     <Separator className="mt-1 bg-border/50" />
   </div>
 );
-
 
 export default ApplicantDetail;

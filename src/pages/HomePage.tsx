@@ -70,10 +70,6 @@ const HomePage = () => {
       text: "Paying money only to get rejected",
     },
     {
-      icon: FileCheck,
-      text: "Manual school fee payments with no records",
-    },
-    {
       icon: Clock,
       text: "No transparency after payment",
     },
@@ -97,31 +93,11 @@ const HomePage = () => {
     },
     {
       number: "4",
-      title: "Track & Download",
+      title: "Track",
       description: "Track status",
     },
   ];
 
-  const testimonials = [
-    {
-      name: "Sarah Nakamya",
-      role: "Parent",
-      quote: "APSCO saved me from traveling to 5 different schools. I applied to all of them from my phone!",
-      rating: 5,
-    },
-    {
-      name: "David Okello",
-      role: "Student",
-      quote: "I tracked my application status in real-time. The transparency is amazing.",
-      rating: 5,
-    },
-    {
-      name: "Mr. James Ssemwogerere",
-      role: "School Administrator",
-      quote: "Our application processing time reduced by 70%. APSCO transformed our admissions.",
-      rating: 5,
-    },
-  ];
 
   const faqs = [
     {
@@ -337,7 +313,7 @@ const HomePage = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              One Platform. Everything Education Payments.
+              One Platform. Everything Application Payments.
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               APSCO brings all your school application needs to one place
@@ -477,7 +453,6 @@ const HomePage = () => {
               </h2>
               <ul className="space-y-4 mb-8">
                 {[
-                  "Receive payments directly",
                   "Manage applications digitally",
                   "Reduce paperwork",
                   "Reach more students",

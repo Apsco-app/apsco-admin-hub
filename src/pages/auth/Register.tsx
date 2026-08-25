@@ -127,7 +127,6 @@ const Register = () => {
   };
 
   const benefits = [
-    { icon: Shield, title: "Verified Documents", desc: "AI-powered verification of student records" },
     { icon: Clock, title: "Save Time", desc: "Reduce manual data entry by 80%" },
     { icon: Sparkles, title: "Smart Insights", desc: "Analytics to optimize your admissions" },
   ];

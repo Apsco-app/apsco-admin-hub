@@ -94,7 +94,6 @@ const Login = () => {
 
   const features = [
     { icon: Users, label: "Manage Applicants" },
-    { icon: FileCheck, label: "Verified Documents" },
     { icon: TrendingUp, label: "Analytics Dashboard" },
     { icon: GraduationCap, label: "Class Management" },
   ];
@@ -128,7 +127,7 @@ const Login = () => {
             </h1>
 
             <p className="text-lg text-white/70 mb-12 leading-relaxed">
-              Streamline your enrollment process with AI-powered document verification and real-time applicant tracking.
+             Analyze students application data so as to make the best decisions with ease.
             </p>
 
             <div className="flex flex-wrap gap-3">
@@ -140,11 +139,7 @@ const Login = () => {
               ))}
             </div>
 
-            <div className="mt-16 grid grid-cols-3 gap-8">
-              <div><div className="text-3xl font-bold text-white">500+</div><div className="text-sm text-white/60">Schools</div></div>
-              <div><div className="text-3xl font-bold text-white">50K+</div><div className="text-sm text-white/60">Applications</div></div>
-              <div><div className="text-3xl font-bold text-white">98%</div><div className="text-sm text-white/60">Satisfaction</div></div>
-            </div>
+            
           </div>
         </div>
       </div>
