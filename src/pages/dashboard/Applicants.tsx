@@ -340,6 +340,7 @@ const Applicants = () => {
           former_school,
           student_email,
           phone,
+          application_data,
           classes (name)
         `)
         .eq('school_id', schoolId)
@@ -371,27 +372,49 @@ const Applicants = () => {
         return;
       }
 
-      // Format data for CSV
-      const headers = ["Applicant Name", "Class", "Aggregate/Points", "Status", "DOB", "Gender", "Former School", "Email", "Phone", "Applied On"];
-      
-      const csvContent = [
-        headers.join(","),
-        ...data.map((a: any) => {
-          const name = `"${(a.full_name || "").replace(/"/g, '""')}"`;
-          const className = `"${(a.classes?.name || 'N/A').replace(/"/g, '""')}"`;
-          const aggregatesVal = a.best_aggregate !== null ? a.best_aggregate : (a.aggregates?.pleAggregates || a.aggregates?.ple_aggregate || a.aggregates?.o_level_points);
-          const aggregates = `"${aggregatesVal !== undefined && aggregatesVal !== null ? String(aggregatesVal).replace(/"/g, '""') : 'N/A'}"`;
-          const status = `"${(a.status || "").replace(/"/g, '""')}"`;
-          const dob = `"${a.date_of_birth ? new Date(a.date_of_birth).toLocaleDateString().replace(/"/g, '""') : 'N/A'}"`;
-          const gender = `"${(a.gender || "N/A").replace(/"/g, '""')}"`;
-          const formerSchool = `"${(a.former_school || "N/A").replace(/"/g, '""')}"`;
-          const email = `"${(a.student_email || "N/A").replace(/"/g, '""')}"`;
-          const phone = `"${(a.phone || "N/A").replace(/"/g, '""')}"`;
-          const appliedOn = `"${new Date(a.application_date).toLocaleDateString().replace(/"/g, '""')}"`;
-          
-          return [name, className, aggregates, status, dob, gender, formerSchool, email, phone, appliedOn].join(",");
-        })
-      ].join("\n");
+      // Collect all unique custom keys from application_data across all retrieved applicants
+      const customKeys = Array.from(
+        new Set(
+          data.flatMap((a: any) =>
+            a.application_data && typeof a.application_data === 'object' && !Array.isArray(a.application_data)
+              ? Object.keys(a.application_data)
+              : []
+          )
+        )
+      );
+
+      // Base headers + formatted dynamic custom key headers
+      const baseHeaders = ["Applicant Name", "Class", "Aggregate/Points", "Status", "DOB", "Gender", "Former School", "Email", "Phone", "Applied On"];
+      const customHeaders = customKeys.map(k => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
+      const headers = [...baseHeaders, ...customHeaders];
+
+      // Format data rows
+      const csvRows = data.map((a: any) => {
+        const name = `"${(a.full_name || "").replace(/"/g, '""')}"`;
+        const className = `"${(a.classes?.name || 'N/A').replace(/"/g, '""')}"`;
+        const aggregatesVal = a.best_aggregate !== null ? a.best_aggregate : (a.aggregates?.pleAggregates || a.aggregates?.ple_aggregate || a.aggregates?.o_level_points);
+        const aggregates = `"${aggregatesVal !== undefined && aggregatesVal !== null ? String(aggregatesVal).replace(/"/g, '""') : 'N/A'}"`;
+        const status = `"${(a.status || "").replace(/"/g, '""')}"`;
+        const dob = `"${a.date_of_birth ? new Date(a.date_of_birth).toLocaleDateString().replace(/"/g, '""') : 'N/A'}"`;
+        const gender = `"${(a.gender || "N/A").replace(/"/g, '""')}"`;
+        const formerSchool = `"${(a.former_school || "N/A").replace(/"/g, '""')}"`;
+        const email = `"${(a.student_email || "N/A").replace(/"/g, '""')}"`;
+        const phone = `"${(a.phone || "N/A").replace(/"/g, '""')}"`;
+        const appliedOn = `"${new Date(a.application_date).toLocaleDateString().replace(/"/g, '""')}"`;
+
+        const baseRow = [name, className, aggregates, status, dob, gender, formerSchool, email, phone, appliedOn];
+
+        const customRow = customKeys.map(key => {
+          const val = a.application_data?.[key];
+          if (val === undefined || val === null) return '"N/A"';
+          const strVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+          return `"${strVal.replace(/"/g, '""')}"`;
+        });
+
+        return [...baseRow, ...customRow].join(",");
+      });
+
+      const csvContent = [headers.join(","), ...csvRows].join("\n");
 
       // Create blob and download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -456,7 +479,6 @@ const Applicants = () => {
         <h2 className="text-xl font-semibold">School Profile Required</h2>
         <p className="text-muted-foreground">Please create and verify your school profile to view applicants.</p>
         <Button onClick={() => navigate('/create-school')} variant="default">
-          {/* FIX: Changed variant="primary" to variant="default" to resolve the type error */}
           Setup School
         </Button>
       </div>
