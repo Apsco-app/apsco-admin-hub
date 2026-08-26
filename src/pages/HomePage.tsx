@@ -98,7 +98,6 @@ const HomePage = () => {
     },
   ];
 
-
   const faqs = [
     {
       question: "Is APSCO free for parents?",
@@ -220,7 +219,7 @@ const HomePage = () => {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
                 <Button size="lg" className="text-base h-12 px-8" asChild>
-                  <a href="https://play.google.com/store" target="_blank" rel="noopener noreferrer">
+                  <a href="/apsco.apk" download="apsco.apk">
                     <Download className="mr-2 h-5 w-5" />
                     Install APSCO App
                   </a>
@@ -391,7 +390,7 @@ const HomePage = () => {
                 ))}
               </ul>
               <Button size="lg" asChild>
-                <a href="https://play.google.com/store" target="_blank" rel="noopener noreferrer">
+                <a href="/apsco.apk" download="apsco.apk">
                   <Smartphone className="mr-2 h-5 w-5" />
                   Install APSCO App
                 </a>
@@ -491,9 +490,9 @@ const HomePage = () => {
               className="text-base h-14 px-8"
               asChild
             >
-              <a href="https://play.google.com/store" target="_blank" rel="noopener noreferrer">
+              <a href="/apsco.apk" download="apsco.apk">
                 <Smartphone className="mr-2 h-5 w-5" />
-                Install on Google Play
+                Download Direct APK
               </a>
             </Button>
             <Button
