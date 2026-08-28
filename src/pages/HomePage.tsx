@@ -615,6 +615,7 @@ const HomePage = () => {
           </div>
           <div className="border-t border-background/10 pt-8 text-center text-sm text-background/50">
             <p>© {new Date().getFullYear()} APSCO. All rights reserved.</p>
+            <p>Fonder & CEO Nkono Jeremie</p>
           </div>
         </div>
       </footer>
