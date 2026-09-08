@@ -1,4 +1,4 @@
-// src/pages/dashboard/AdmissionsSettings.tsx (FIXED)
+// src/pages/dashboard/AdmissionsSettings.tsx
 
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
@@ -21,12 +21,12 @@ const applicationFields = [
   { id: "fullName", name: "Full Name", category: "Personal Information", required: true },
   { id: "dateOfBirth", name: "Date of Birth", category: "Personal Information", required: true },
   { id: "gender", name: "Gender", category: "Personal Information", required: true },
-  { id: "religion", name: "Religion", category: "Personal Information", required: true }, // Updated
-  { id: "nationality", name: "Nationality", category: "Personal Information", required: true }, // Updated
-  { id: "parentName", name: "Parent/Guardian Name", category: "Personal Information", required: true }, // Updated
-  { id: "phone", name: "Phone Number", category: "Personal Information", required: true }, // Updated
+  { id: "religion", name: "Religion", category: "Personal Information", required: true },
+  { id: "nationality", name: "Nationality", category: "Personal Information", required: true },
+  { id: "parentName", name: "Parent/Guardian Name", category: "Personal Information", required: true },
+  { id: "phone", name: "Phone Number", category: "Personal Information", required: true },
   { id: "email", name: "Email Address", category: "Personal Information", required: false },
-  { id: "address", name: "Home Address", category: "Personal Information", required: true }, // Updated
+  { id: "address", name: "Home Address", category: "Personal Information", required: true },
   { id: "healthInfo", name: "Health Information", category: "Personal Information", required: false },
   { id: "hobbies", name: "Hobbies & Talents", category: "Personal Information", required: false },
   { id: "sports", name: "Favorite Sports", category: "Personal Information", required: false },
@@ -37,7 +37,7 @@ const applicationFields = [
   { id: "formerSchool", name: "Former School Name", category: "Academic Background", required: true },
   { id: "formerSchoolLocation", name: "Former School Location", category: "Academic Background", required: false },
 
-  // PRIMARY ENTRY (S.1-S.3) - Combines Identifiers + Results
+  // PRIMARY ENTRY (S.1-S.3)
   { id: "lin", name: "LIN (Learner ID)", category: "Primary Entry Requirements (PLE)", required: false },
   { id: "pleIndex", name: "PLE Index Number", category: "Primary Entry Requirements (PLE)", required: false },
 
@@ -48,7 +48,7 @@ const applicationFields = [
   { id: "pleAggregates", name: "Total PLE Aggregates", category: "Primary Entry Requirements (PLE)", required: false },
   { id: "pleDivision", name: "PLE Division", category: "Primary Entry Requirements (PLE)", required: false },
 
-  // A-LEVEL ENTRY (S.5-S.6) - Combines Identifiers + Results + Combinations
+  // A-LEVEL ENTRY (S.5-S.6)
   { id: "uceIndex", name: "UCE Index Number", category: "A-Level Entry Requirements (UCE)", required: false },
   { id: "uceAggregates", name: "UCE Aggregates (Best 8)", category: "A-Level Entry Requirements (UCE)", required: false },
   { id: "oLevelSchoolName", name: "'O' Level School Name", category: "A-Level Entry Requirements (UCE)", required: false },
@@ -57,10 +57,8 @@ const applicationFields = [
 ];
 
 const categories = Array.from(new Set(applicationFields.map(f => f.category)));
-
 const defaultRequiredFields = applicationFields.filter((f) => f.required).map((f) => f.id);
 
-// Normalize class_field_config: Supabase can return it as a single object (one-to-one) or array
 function getClassConfig(c: any): { id: string; enabled_fields: string[] | null; is_admissions_enabled: boolean } | null {
   const raw = c.class_field_config;
   if (raw == null) return null;
@@ -75,24 +73,23 @@ function getClassConfig(c: any): { id: string; enabled_fields: string[] | null; 
 
 // 2. Interfaces for state management
 interface ClassSetting {
-  id: string; // class.id
-  name: string; // class.name
-  config_id: string | null; // class_field_config.id
+  id: string;
+  name: string;
+  config_id: string | null;
   is_admissions_enabled: boolean;
-  enabled_fields: string[]; // class_field_config.enabled_fields (JSONB array)
-  is_collapsible_open: boolean; // UI state for my previous fix's Collapsible
+  enabled_fields: string[];
+  is_collapsible_open: boolean;
 }
 
 interface GlobalSettings {
   settings_id: string | null;
   is_open: boolean;
   deadline_date: Date | undefined;
+  decision_date: Date | undefined;
 }
-
 
 const AdmissionsSettings = () => {
   const { toast } = useToast();
-  // Ensure useSchoolData is safely cast to 'any' for consistency
   const { schoolId, isLoading: schoolLoading } = useSchoolData() as any;
 
   const [isSaving, setIsSaving] = useState(false);
@@ -105,6 +102,7 @@ const AdmissionsSettings = () => {
     settings_id: null,
     is_open: false,
     deadline_date: undefined,
+    decision_date: undefined,
   });
 
   // Per-Class Settings State
@@ -124,9 +122,9 @@ const AdmissionsSettings = () => {
       const { data: classData, error: classError } = await supabase
         .from('classes')
         .select(`
-              id, 
-              name,
-              class_field_config (id, enabled_fields, is_admissions_enabled)
+            id, 
+            name,
+            class_field_config (id, enabled_fields, is_admissions_enabled)
           `)
         .eq('school_id', schoolId)
         .order('name', { ascending: true });
@@ -141,8 +139,6 @@ const AdmissionsSettings = () => {
       } else {
         const formattedClasses: ClassSetting[] = classData.map((c: any) => {
           const config = getClassConfig(c);
-
-          // enabled_fields in DB stores only optional (non-required) fields; merge with required
           const savedFields = config?.enabled_fields;
           const enabledFields = (savedFields !== null && savedFields !== undefined && Array.isArray(savedFields))
             ? savedFields
@@ -161,10 +157,10 @@ const AdmissionsSettings = () => {
         setClassSettings(formattedClasses);
       }
 
-      // 2. Fetch Global Admission Settings
+      // 2. Fetch Global Admission Settings (including decision_date)
       const { data: globalData, error: globalError } = await supabase
         .from('admissions_settings')
-        .select('id, is_open, deadline_date')
+        .select('id, is_open, deadline_date, decision_date')
         .eq('school_id', schoolId)
         .maybeSingle();
 
@@ -176,22 +172,21 @@ const AdmissionsSettings = () => {
           description: `Global Settings: ${globalError.message} (Code: ${globalError.code})`,
           variant: "destructive"
         });
-        loadedGlobal = { settings_id: null, is_open: false, deadline_date: undefined };
+        loadedGlobal = { settings_id: null, is_open: false, deadline_date: undefined, decision_date: undefined };
         setGlobalSettings(loadedGlobal);
       } else if (globalData) {
         loadedGlobal = {
           settings_id: globalData.id,
           is_open: globalData.is_open,
           deadline_date: globalData.deadline_date ? new Date(globalData.deadline_date) : undefined,
+          decision_date: globalData.decision_date ? new Date(globalData.decision_date) : undefined,
         };
         setGlobalSettings(loadedGlobal);
       } else {
-        loadedGlobal = { settings_id: null, is_open: false, deadline_date: undefined };
+        loadedGlobal = { settings_id: null, is_open: false, deadline_date: undefined, decision_date: undefined };
         setGlobalSettings(loadedGlobal);
       }
 
-      // Store the loaded state as the last saved state after all data is loaded
-      // This ensures we can detect unsaved changes correctly
       if (classData) {
         setLastSavedState({
           global: { ...loadedGlobal },
@@ -229,13 +224,13 @@ const AdmissionsSettings = () => {
     fetchSettings();
   }, [fetchSettings]);
 
-  // Track unsaved changes and warn user before leaving
+  // Track unsaved changes
   useEffect(() => {
-    // Compare current state with last saved state
     if (lastSavedState) {
       const globalChanged =
         globalSettings.is_open !== lastSavedState.global.is_open ||
-        globalSettings.deadline_date?.getTime() !== lastSavedState.global.deadline_date?.getTime();
+        globalSettings.deadline_date?.getTime() !== lastSavedState.global.deadline_date?.getTime() ||
+        globalSettings.decision_date?.getTime() !== lastSavedState.global.decision_date?.getTime();
 
       const classesChanged = JSON.stringify(classSettings.map(c => ({
         id: c.id,
@@ -265,12 +260,8 @@ const AdmissionsSettings = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-
-  // --- State Handlers (Preserving original logic) ---
-
   const handleGlobalSettingChange = (key: keyof GlobalSettings, value: any) => {
     setGlobalSettings(prev => ({ ...prev, [key]: value }));
-    // Changes will be tracked by the useEffect that monitors state
   };
 
   const handleClassToggle = (classId: string) => {
@@ -279,12 +270,11 @@ const AdmissionsSettings = () => {
         c.id === classId ? { ...c, is_admissions_enabled: !c.is_admissions_enabled } : c
       )
     );
-    // Changes will be tracked by the useEffect that monitors state
   };
 
   const handleFieldToggle = (classId: string, fieldId: string) => {
     const field = applicationFields.find((f) => f.id === fieldId);
-    if (field?.required) return; // Cannot disable required fields
+    if (field?.required) return;
 
     setClassSettings((prev) =>
       prev.map((c) => {
@@ -298,11 +288,9 @@ const AdmissionsSettings = () => {
         return { ...c, enabled_fields: newFields };
       })
     );
-    // Changes will be tracked by the useEffect that monitors state
   };
 
   // --- Save Handler ---
-
   const handleSave = async () => {
     if (!schoolId) {
       toast({
@@ -315,17 +303,13 @@ const AdmissionsSettings = () => {
     setIsSaving(true);
     let success = true;
 
-    console.log("Saving settings for school:", schoolId);
-    console.log("Global Settings:", globalSettings);
-    console.log("Class Settings:", classSettings);
-
     try {
       // 1. Save Global Admissions Settings (UPSERT)
       const globalPayload = {
         school_id: schoolId,
         is_open: globalSettings.is_open,
         deadline_date: globalSettings.deadline_date ? format(globalSettings.deadline_date, 'yyyy-MM-dd') : null,
-        // Include ID for update, omit for insert
+        decision_date: globalSettings.decision_date ? format(globalSettings.decision_date, 'yyyy-MM-dd') : null,
         ...(globalSettings.settings_id && { id: globalSettings.settings_id })
       };
 
@@ -341,11 +325,9 @@ const AdmissionsSettings = () => {
         success = false;
       } else {
         if (globalUpdate && !globalSettings.settings_id) {
-          // Update local state with the new ID if it was an INSERT
           setGlobalSettings(prev => ({ ...prev, settings_id: globalUpdate.id }));
         }
 
-        // SYNC WITH SCHOOLS TABLE
         const { error: schoolUpdateError } = await supabase
           .from('schools')
           .update({ is_admissions_open: globalSettings.is_open })
@@ -356,23 +338,17 @@ const AdmissionsSettings = () => {
         }
       }
 
-      // 2. Save Per-Class Field Configurations (Loop and UPSERT)
+      // 2. Save Per-Class Field Configurations
       const classUpdates = classSettings.map(c => {
-        // The DB field only needs non-required fields, as required fields are application logic
         const nonRequiredFields = c.enabled_fields.filter(fieldId => !defaultRequiredFields.includes(fieldId));
-
-        console.log(`Preparing save for class ${c.name}:`);
-        console.log(`  - All enabled_fields: ${JSON.stringify(c.enabled_fields)}`);
-        console.log(`  - Non-required fields to save: ${JSON.stringify(nonRequiredFields)}`);
 
         const updatePayload: any = {
           school_id: schoolId,
           class_id: c.id,
           is_admissions_enabled: c.is_admissions_enabled,
-          enabled_fields: nonRequiredFields.length > 0 ? nonRequiredFields : [], // Ensure it's always an array
+          enabled_fields: nonRequiredFields.length > 0 ? nonRequiredFields : [],
         };
 
-        // Include ID for update if it exists
         if (c.config_id) {
           updatePayload.id = c.config_id;
         }
@@ -380,10 +356,6 @@ const AdmissionsSettings = () => {
         return updatePayload;
       });
 
-      console.log("Saving class updates:", JSON.stringify(classUpdates, null, 2));
-
-      // Use an upsert with multiple rows
-      // Try using both id and class_id as conflict targets for better reliability
       const { data: configUpdates, error: configError } = await supabase
         .from('class_field_config')
         .upsert(classUpdates, {
@@ -394,35 +366,21 @@ const AdmissionsSettings = () => {
 
       if (configError) {
         console.error("Class settings save failed:", configError);
-        console.error("Failed payload:", classUpdates);
         toast({ title: "Error", description: `Failed to save class configurations: ${configError.message}`, variant: "destructive" });
         success = false;
       } else if (configUpdates) {
-        console.log("Successfully saved class configs:", configUpdates);
-        console.log("Current classSettings before update:", JSON.stringify(classSettings, null, 2));
-
-        // Update local state: preserve current enabled_fields (they're already correct)
-        // Only update config_id and is_admissions_enabled from the save response
         setClassSettings(prev => {
           const updated = prev.map(c => {
             const saved = configUpdates.find((u: any) => u.class_id === c.id);
             if (saved) {
-              // Preserve all current state, especially enabled_fields which the user configured
-              // Only update the config_id (for new inserts) and verify is_admissions_enabled matches
-              const updatedClass = {
+              return {
                 ...c,
                 config_id: saved.id,
-                // Keep current enabled_fields - don't overwrite with DB response
-                // Keep current is_admissions_enabled - it was just saved
               };
-              console.log(`Updated class ${c.name}: enabled_fields=${JSON.stringify(updatedClass.enabled_fields)}`);
-              return updatedClass;
             }
             return c;
           });
-          console.log("Updated classSettings after save:", JSON.stringify(updated, null, 2));
 
-          // Update last saved state with the updated values (not the old classSettings)
           if (success) {
             setLastSavedState({
               global: { ...globalSettings },
@@ -434,9 +392,6 @@ const AdmissionsSettings = () => {
           return updated;
         });
 
-        // SYNC WITH CLASSES TABLE
-        // We do this individually because Supabase 'upsert' or 'update' on multiple rows with varying data might need specific handling,
-        // but since we just need to update `accepting_applications` on `classes`:
         for (const c of classSettings) {
           await supabase
             .from('classes')
@@ -446,7 +401,7 @@ const AdmissionsSettings = () => {
       }
 
       if (success) {
-        toast({ title: "Settings Saved", description: "Your admissions settings have been successfully updated.", action: <Check className="h-5 w-5 text-success" />, });
+        toast({ title: "Settings Saved", description: "Your admissions settings have been successfully updated.", action: <Check className="h-5 w-5 text-success" /> });
       }
     } catch (error: any) {
       console.error("Unexpected error saving settings:", error);
@@ -459,9 +414,6 @@ const AdmissionsSettings = () => {
       setIsSaving(false);
     }
   };
-
-
-  // --- Render Logic (CRITICAL STABILITY FIX) ---
 
   if (schoolLoading || isDataLoading) {
     return (
@@ -491,14 +443,19 @@ const AdmissionsSettings = () => {
           <p className="text-muted-foreground">Configure your admissions preferences</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={(e) => {
-            // If Shift key is held, force a hard page reload
-            if (e.shiftKey) {
-              window.location.reload();
-            } else {
-              fetchSettings();
-            }
-          }} disabled={isSaving || isDataLoading} title="Click to refresh data. Shift+Click to forcefully reload the page.">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              if (e.shiftKey) {
+                window.location.reload();
+              } else {
+                fetchSettings();
+              }
+            }}
+            disabled={isSaving || isDataLoading}
+            title="Click to refresh data. Shift+Click to forcefully reload the page."
+          >
             <RefreshCw className={cn("h-4 w-4 mr-2", isDataLoading && "animate-spin")} />
             Refresh
           </Button>
@@ -527,13 +484,13 @@ const AdmissionsSettings = () => {
         </div>
       </div>
 
-      {/* Step 1: Admissions Status - RETAINED DESIGN */}
+      {/* Step 1: Admissions Status */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
             1
           </div>
-          <h2 className="text-lg font-semibold">Admissions Status</h2>
+          <h2 className="text-lg font-semibold">Admissions Status & Key Dates</h2>
         </div>
         <div className="bg-background rounded-xl border border-border p-6 ml-11">
           <div className="flex items-center justify-between">
@@ -552,43 +509,90 @@ const AdmissionsSettings = () => {
               disabled={isSaving}
             />
           </div>
-          <div className="mt-6 space-y-2">
-            <Label className="font-medium block">Admissions Deadline</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !globalSettings.deadline_date && "text-muted-foreground"
-                  )}
-                  disabled={isSaving}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {globalSettings.deadline_date ? (
-                    format(globalSettings.deadline_date, "PPP")
-                  ) : (
-                    <span>Set a deadline date</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={globalSettings.deadline_date}
-                  onSelect={(date) => handleGlobalSettingChange('deadline_date', date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-            <p className="text-xs text-muted-foreground">
-              Applications will be automatically closed after this date.
-            </p>
+
+          {/* Date Pickers Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            {/* Application Deadline */}
+            <div className="space-y-2">
+              <Label className="font-medium block">Admissions Deadline</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !globalSettings.deadline_date && "text-muted-foreground"
+                    )}
+                    disabled={isSaving}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {globalSettings.deadline_date ? (
+                      format(globalSettings.deadline_date, "PPP")
+                    ) : (
+                      <span>Set deadline date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={globalSettings.deadline_date}
+                    onSelect={(date) => handleGlobalSettingChange('deadline_date', date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                Applications will be automatically closed after this date.
+              </p>
+            </div>
+
+            {/* Decision Release Date */}
+            <div className="space-y-2">
+              <Label className="font-medium block">Decision Release Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !globalSettings.decision_date && "text-muted-foreground"
+                    )}
+                    disabled={isSaving}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {globalSettings.decision_date ? (
+                      format(globalSettings.decision_date, "PPP")
+                    ) : (
+                      <span>Set decision release date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={globalSettings.decision_date}
+                    onSelect={(date) => handleGlobalSettingChange('decision_date', date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                Date by which applicants receive their acceptance or rejection status.
+              </p>
+            </div>
           </div>
+
+          {globalSettings.decision_date && (
+            <p className="mt-4 rounded-md bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Decision Release Date:</span>{" "}
+              {format(globalSettings.decision_date, "PPP")}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Step 2: Per-Class Configuration - RETAINED DESIGN */}
+      {/* Step 2: Per-Class Configuration */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">

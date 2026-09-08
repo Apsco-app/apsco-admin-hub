@@ -159,7 +159,7 @@ const Register = () => {
             </h1>
 
             <p className="text-lg text-white/70 mb-12 leading-relaxed">
-              Join hundreds of schools across Uganda using APSCO to modernize their student enrollment.
+              Join a number of schools across Uganda using APSCO to modernize their student enrollment.
             </p>
 
             <div className="space-y-6">
